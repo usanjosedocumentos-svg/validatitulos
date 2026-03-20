@@ -31,7 +31,8 @@ KEYWORDS_NIVEL = {
                         "psicologia", "economia", "enfermeria", "odontologia",
                         "comunicacion", "veterinaria"],
     "tecnologo":       ["tecnologo", "tecnologia en", "tecnico superior"],
-    "bachillerato":    ["bachiller", "tecnico", "auxiliar"],
+    "tecnico":         ["tecnico laboral", "tecnico en", "formacion tecnica", "tecnico profesional"],
+    "bachillerato":    ["bachiller", "auxiliar"],
 }
 
 SEMESTRE_POR_NIVEL = {
@@ -40,6 +41,7 @@ SEMESTRE_POR_NIVEL = {
     "especializacion": 6,
     "universitario":   5,
     "tecnologo":       3,
+    "tecnico":         2,
     "bachillerato":    1,
 }
 
