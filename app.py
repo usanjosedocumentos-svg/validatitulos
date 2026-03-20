@@ -107,7 +107,7 @@ if pagina == "Validar titulo":
             with st.spinner("Consultando base historica..."):
                 r = motor.validar(titulo.strip(), universidad.strip(), pais)
             nivel_txt = (r.nivel or "").capitalize()
-            sem_txt   = str(r.semestre) + " semestre" if r.semestre else "—"
+            sem_txt   = str(r.semestre) + " semestre" if r.semestre else ""
             if r.requiere_revision:
                 st.warning("REQUIERE REVISION BACK | Confianza: " +
                            str(r.confianza_pct) + "% | " + r.razon)
@@ -123,8 +123,4 @@ if pagina == "Validar titulo":
             st.caption("Metodo: " + r.metodo + " | " + r.razon)
             st.session_state["ultimo_resultado"] = {
                 "titulo": titulo.strip(), "universidad": universidad.strip(),
-                "pais": pais, "resultado": r}⟋
-                
-
-except Exception as e:
-    st.error("Error al leer el archivo: " + str(e))
+                "pais": pais, "resultado": r}
