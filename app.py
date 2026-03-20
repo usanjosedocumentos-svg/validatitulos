@@ -163,30 +163,48 @@ NIVELES  = ["universitario","maestria","especializacion","doctorado","tecnologo"
 
 if pagina == "Validar titulo":
     st.header("Validar titulo academico")
-    st.info("Ingresa el titulo del cliente. El Back siempre toma la decision final.")
-    with st.form("form_validar", clear_on_submit=False):
+    if pendientes_count > 0:
+        st.warning("El Back tiene " + str(pendientes_count) + " solicitud(es) pendiente(s) por aprobar.")
+    st.info("Ingresa el titulo del cliente. Se enviara automaticamente al Back para su aprobacion.")
+    with st.form("form_validar", clear_on_submit=True):
         titulo = st.text_input("Nombre del titulo *", placeholder="Ej: Administracion de Empresas")
         col1, col2 = st.columns(2)
         universidad = col1.text_input("Universidad", placeholder="Ej: Universidad Nacional")
         pais = col2.selectbox("Pais", PAISES)
-        st.file_uploader("Documento soporte (opcional)", type=["pdf","png","jpg","jpeg"])
-        submitted = st.form_submit_button("Validar titulo", use_container_width=True)
+        col3, col4 = st.columns(2)
+        nivel_manual = col3.selectbox("Nivel academico (opcional)", ["-- Seleccionar --"] + NIVELES)
+        titular = col4.text_input("Nombre del titular (opcional)", placeholder="Ej: Juan Perez")
+        submitted = st.form_submit_button("Enviar al Back para aprobacion", use_container_width=True, type="primary")
     if submitted:
-        if not titulo.strip(): st.error("Por favor ingresa el nombre del titulo.")
+        if not titulo.strip():
+            st.error("Por favor ingresa el nombre del titulo.")
         else:
-            with st.spinner("Consultando..."): r = motor.validar(titulo.strip(), universidad.strip(), pais)
-            nivel_txt = (r.nivel or "").capitalize()
-            sem_txt = str(r.semestre) + " semestre" if r.semestre else "--"
-            if r.requiere_revision:
-                st.warning("REQUIERE REVISION BACK | Confianza: " + str(r.confianza_pct) + "% | " + r.razon)
-                st.session_state["back_titulo"] = titulo.strip()
-            elif r.aplica:
-                st.success("APLICA | Nivel: " + nivel_txt + " | Semestre: " + sem_txt + " | Confianza: " + str(r.confianza_pct) + "%")
+            nivel_enviar = nivel_manual if nivel_manual != "-- Seleccionar --" else "universitario"
+            pais_enviar = pais if pais in PAISES_B else "Otro"
+            nuevo_id = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+            df_p, sha_p = gh_get_pendientes()
+            nueva = pd.DataFrame([{
+                "id": nuevo_id,
+                "fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                "hora": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+                "nombre_titulo": titulo.strip(),
+                "universidad": universidad.strip(),
+                "pais": pais_enviar,
+                "nivel_detectado": nivel_enviar,
+                "titular": titular.strip(),
+                "texto_diploma": "",
+                "estado": "PENDIENTE",
+                "revisor": "", "decision": "", "nivel_confirmado": "", "motivo": ""
+            }])
+            df_p = pd.concat([df_p, nueva], ignore_index=True)
+            ok, err = gh_save_pendientes(df_p, sha_p, "New validation request: " + titulo.strip())
+            if ok:
+                registrar_consulta(titulo.strip(), "Enviado al Back", nivel_enviar, 0)
+                st.session_state["ultimo_resultado"] = {"titulo": titulo.strip(), "universidad": universidad.strip(), "pais": pais, "resultado": None}
+                st.success("Solicitud enviada al Back correctamente.")
+                st.info("El equipo Back recibira la alerta y tomara la decision de aprobar o rechazar.")
             else:
-                st.error("NO APLICA | Nivel: " + nivel_txt + " | Confianza: " + str(r.confianza_pct) + "%")
-            st.caption("Metodo: " + r.metodo + " | " + r.razon)
-            registrar_consulta(titulo.strip(), "Aplica" if r.aplica else ("Requiere revision" if r.requiere_revision else "No aplica"), r.nivel, r.confianza_pct)
-            st.session_state["ultimo_resultado"] = {"titulo": titulo.strip(), "universidad": universidad.strip(), "pais": pais, "resultado": r}
+                st.error("Error al enviar al Back: " + str(err) + ". Verifica que GITHUB_TOKEN esta configurado en Secrets.")
 
 
 elif pagina == "Ingresar diploma":
