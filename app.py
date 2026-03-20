@@ -141,7 +141,16 @@ elif pagina == "Leer diploma (IA)":
     st.header("Leer diploma con Inteligencia Artificial")
     st.info("Sube la foto o PDF del diploma. La IA lee automaticamente el titulo, universidad, pais y nivel, y llena los campos para validar.")
 
-    api_key = st.text_input("Clave API de Anthropic (requerida para leer el diploma)", type="password", placeholder="sk-ant-...", help="La clave no se guarda. Obtenla en console.anthropic.com")
+    api_key_secret = ""
+    try:
+        api_key_secret = st.secrets.get("ANTHROPIC_API_KEY", "")
+    except Exception:
+        pass
+    if api_key_secret:
+        api_key = api_key_secret
+        st.success("Clave API configurada. Lista para usar.")
+    else:
+        api_key = st.text_input("Clave API de Anthropic", type="password", placeholder="sk-ant-...", help="O pide al administrador configurar ANTHROPIC_API_KEY en Streamlit Secrets.")
 
     archivo_diploma = st.file_uploader("Sube el diploma (imagen JPG, PNG o PDF)", type=["jpg","jpeg","png","pdf"], key="diploma_uploader")
 
