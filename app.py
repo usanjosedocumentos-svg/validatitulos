@@ -181,30 +181,65 @@ if pagina == "Validar titulo":
         else:
             nivel_enviar = nivel_manual if nivel_manual != "-- Seleccionar --" else "universitario"
             pais_enviar = pais if pais in PAISES_B else "Otro"
-            nuevo_id = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-            df_p, sha_p = gh_get_pendientes()
-            nueva = pd.DataFrame([{
-                "id": nuevo_id,
-                "fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-                "hora": datetime.now(timezone.utc).strftime("%H:%M:%S"),
-                "nombre_titulo": titulo.strip(),
-                "universidad": universidad.strip(),
-                "pais": pais_enviar,
-                "nivel_detectado": nivel_enviar,
-                "titular": titular.strip(),
-                "texto_diploma": "",
-                "estado": "PENDIENTE",
-                "revisor": "", "decision": "", "nivel_confirmado": "", "motivo": ""
-            }])
-            df_p = pd.concat([df_p, nueva], ignore_index=True)
-            ok, err = gh_save_pendientes(df_p, sha_p, "New validation request: " + titulo.strip())
-            if ok:
-                registrar_consulta(titulo.strip(), "Enviado al Back", nivel_enviar, 0)
-                st.session_state["ultimo_resultado"] = {"titulo": titulo.strip(), "universidad": universidad.strip(), "pais": pais, "resultado": None}
-                st.success("Solicitud enviada al Back correctamente.")
-                st.info("El equipo Back recibira la alerta y tomara la decision de aprobar o rechazar.")
+            titulo_norm = titulo.strip().lower()
+            # Verificar si ya existe una decision del Back para este titulo
+            decision_previa = None
+            if CSV_DECISIONES.exists():
+                df_dec_check = pd.read_csv(CSV_DECISIONES)
+                if not df_dec_check.empty and "nombre_titulo" in df_dec_check.columns:
+                    match = df_dec_check[df_dec_check["nombre_titulo"].astype(str).str.lower().str.strip() == titulo_norm]
+                    if not match.empty:
+                        decision_previa = match.iloc[-1]
+            # Verificar si ya esta pendiente
+            df_p_check, _ = gh_get_pendientes()
+            ya_pendiente = False
+            if not df_p_check.empty and "nombre_titulo" in df_p_check.columns:
+                pend_match = df_p_check[
+                    (df_p_check["nombre_titulo"].astype(str).str.lower().str.strip() == titulo_norm) &
+                    (df_p_check["estado"].astype(str).str.upper() == "PENDIENTE")
+                ]
+                ya_pendiente = not pend_match.empty
+
+            if decision_previa is not None:
+                # Ya tiene decision del Back — mostrarla directamente
+                aplica_prev = str(decision_previa.get("decision_aplica","")).lower() in ["true","1","si"]
+                nivel_prev  = str(decision_previa.get("nivel_confirmado",""))
+                motivo_prev = str(decision_previa.get("motivo",""))
+                revisor_prev = str(decision_previa.get("revisor",""))
+                if aplica_prev:
+                    st.success("APLICA | Nivel: " + nivel_prev.capitalize() + " | Decision del Back")
+                else:
+                    st.error("NO APLICA | Decision del Back")
+                if motivo_prev and motivo_prev != "nan":
+                    st.info("Observacion del Back: " + motivo_prev)
+                if revisor_prev and revisor_prev != "nan":
+                    st.caption("Revisado por: " + revisor_prev)
+            elif ya_pendiente:
+                st.warning("Este titulo ya esta en espera de decision del Back. El equipo lo revisara pronto.")
             else:
-                st.error("Error al enviar al Back: " + str(err) + ". Verifica que GITHUB_TOKEN esta configurado en Secrets.")
+                nuevo_id = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+                df_p, sha_p = gh_get_pendientes()
+                nueva = pd.DataFrame([{
+                    "id": nuevo_id,
+                    "fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                    "hora": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+                    "nombre_titulo": titulo.strip(),
+                    "universidad": universidad.strip(),
+                    "pais": pais_enviar,
+                    "nivel_detectado": nivel_enviar,
+                    "titular": titular.strip(),
+                    "texto_diploma": "",
+                    "estado": "PENDIENTE",
+                    "revisor": "", "decision": "", "nivel_confirmado": "", "motivo": ""
+                }])
+                df_p = pd.concat([df_p, nueva], ignore_index=True)
+                ok, err = gh_save_pendientes(df_p, sha_p, "New validation request: " + titulo.strip())
+                if ok:
+                    registrar_consulta(titulo.strip(), "Enviado al Back", nivel_enviar, 0)
+                    st.success("Solicitud enviada al Back correctamente.")
+                    st.info("El equipo Back recibira la alerta y tomara la decision.")
+                else:
+                    st.error("Error al enviar al Back: " + str(err))
 
 
 elif pagina == "Ingresar diploma":
@@ -300,7 +335,7 @@ elif pagina == "Revision Back":
                                     df_p.loc[i,"motivo"]           = p_motivo.strip()
                                     ok, err = gh_save_pendientes(df_p, sha_p, ("Approve" if aprobar else "Reject")+": "+titulo_p)
                                     if ok:
-                                        if p_incorp: motor.guardar_decision(titulo=titulo_p, universidad=str(row.get("universidad","")), pais=str(row.get("pais","Colombia")), aplica=aplica_bool, nivel=p_nivel, revisor=p_revisor.strip(), motivo=p_motivo.strip(), incorporar=False)
+                                        motor.guardar_decision(titulo=titulo_p, universidad=str(row.get("universidad","")), pais=str(row.get("pais","Colombia")), aplica=aplica_bool, nivel=p_nivel, revisor=p_revisor.strip(), motivo=p_motivo.strip(), incorporar=p_incorp)
                                         get_motor.clear()
                                         st.success("Diploma " + ("APROBADO" if aprobar else "RECHAZADO") + ".")
                                         st.rerun()
