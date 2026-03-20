@@ -1,14 +1,12 @@
 """
 app.py - Validador de Titulos Academicos
-Ejecutar: streamlit run app.py
 """
 from pathlib import Path
 import pandas as pd
 import streamlit as st
 from validador import ValidadorCSV, SEMESTRE_POR_NIVEL, CSV_DECISIONES, CSV_TITULOS
 
-st.set_page_config(page_title="ValidaTitulos", page_icon=":mortar_board:",
-                   layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="ValidaTitulos", page_icon=":mortar_board:", layout="wide", initial_sidebar_state="expanded")
 
 @st.cache_resource
 def get_motor():
@@ -16,63 +14,40 @@ def get_motor():
 
 motor = get_motor()
 
-
-def existe_duplicado(nombre: str, nivel: str) -> bool:
-    n  = nombre.strip().lower()
+def existe_duplicado(nombre, nivel):
+    n = nombre.strip().lower()
     nv = nivel.strip().lower()
     if CSV_TITULOS.exists():
         df = pd.read_csv(CSV_TITULOS)
         if not df.empty:
-            m = (df["nombre_titulo"].astype(str).str.lower().str.strip() == n) & \
-                (df["nivel"].astype(str).str.lower().str.strip() == nv)
+            m = (df["nombre_titulo"].astype(str).str.lower().str.strip() == n) & (df["nivel"].astype(str).str.lower().str.strip() == nv)
             if m.any():
                 return True
     if CSV_DECISIONES.exists():
         df2 = pd.read_csv(CSV_DECISIONES)
         if not df2.empty and "nivel_confirmado" in df2.columns:
-            m2 = (df2["nombre_titulo"].astype(str).str.lower().str.strip() == n) & \
-                 (df2["nivel_confirmado"].astype(str).str.lower().str.strip() == nv)
+            m2 = (df2["nombre_titulo"].astype(str).str.lower().str.strip() == n) & (df2["nivel_confirmado"].astype(str).str.lower().str.strip() == nv)
             if m2.any():
                 return True
     return False
 
-
 st.markdown("""
 <style>
-html, body, [class*="css"] { cursor: auto !important; }
-button, [role="button"], a, label { cursor: pointer !important; }
+html, body { cursor: auto !important; }
+button, label { cursor: pointer !important; }
 input[type="text"], textarea { cursor: text !important; }
 [data-testid="stSidebar"] { background: #0f1117; }
 [data-testid="stSidebar"] * { color: #e0e0e0 !important; }
-div[data-testid="stDataFrame"] td div { color: #111111 !important; font-size:0.85rem !important; }
-div[data-testid="stDataFrame"] th div { color: #222222 !important; font-weight:700 !important; background:#f1f5f9 !important; }
+div[data-testid="stDataFrame"] td div { color: #111 !important; font-size:0.85rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
-
 with st.sidebar:
-    st.markdown(
-        "<div style='padding:0.5rem 0 1.2rem'>"
-        "<div style='font-size:1.35rem;font-weight:700;color:#fff'>ValidaTitulos</div>"
-        "<div style='font-size:0.72rem;color:#888'>Sistema de uso interno</div>"
-        "</div>",
-        unsafe_allow_html=True)
-    pagina = st.radio("Nav",
-        ["Validar titulo", "Revision Back", "Cargar datos", "Historial"],
-        label_visibility="collapsed")
+    st.markdown("<div style='padding:0.5rem 0 1.2rem'><div style='font-size:1.35rem;font-weight:700;color:#fff'>ValidaTitulos</div><div style='font-size:0.72rem;color:#888'>Sistema de uso interno</div></div>", unsafe_allow_html=True)
+    pagina = st.radio("Nav", ["Validar titulo", "Revision Back", "Cargar datos", "Historial"], label_visibility="collapsed")
     stats = motor.stats()
-    st.markdown(
-        "<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;"
-        "margin-bottom:5px;display:flex;justify-content:space-between'>"
-        "<span style='color:#aaa;font-size:0.78rem'>Registros totales</span>"
-        "<span style='color:#fff;font-weight:700'>" + str(stats['total']) + "</span></div>",
-        unsafe_allow_html=True)
-    st.markdown(
-        "<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;"
-        "margin-bottom:5px;display:flex;justify-content:space-between'>"
-        "<span style='color:#aaa;font-size:0.78rem'>Aplican</span>"
-        "<span style='color:#4ade80;font-weight:700'>" + str(stats['aplican']) + "</span></div>",
-        unsafe_allow_html=True)
+    st.markdown("<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:5px;display:flex;justify-content:space-between'><span style='color:#aaa;font-size:0.78rem'>Registros totales</span><span style='color:#fff;font-weight:700'>" + str(stats['total']) + "</span></div>", unsafe_allow_html=True)
+    st.markdown("<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:5px;display:flex;justify-content:space-between'><span style='color:#aaa;font-size:0.78rem'>Aplican</span><span style='color:#4ade80;font-weight:700'>" + str(stats['aplican']) + "</span></div>", unsafe_allow_html=True)
     if st.button("Recargar base", use_container_width=True):
         get_motor.clear()
         st.cache_resource.clear()
@@ -81,8 +56,6 @@ with st.sidebar:
 PAISES = ["Colombia","Mexico","Argentina","Chile","Peru","Ecuador","Venezuela","Bolivia","Espana","Estados Unidos","Otro"]
 NIVELES = ["universitario","maestria","especializacion","doctorado","tecnologo","bachillerato"]
 
-
-# PAG 1: VALIDAR
 if pagina == "Validar titulo":
     st.header("Validar titulo academico")
     st.info("Ingresa el titulo del cliente. El Back siempre toma la decision final.")
@@ -112,8 +85,6 @@ if pagina == "Validar titulo":
             st.caption("Metodo: " + r.metodo + " | " + r.razon)
             st.session_state["ultimo_resultado"] = {"titulo": titulo.strip(), "universidad": universidad.strip(), "pais": pais, "resultado": r}
 
-
-# PAG 2: BACK
 elif pagina == "Revision Back":
     st.header("Revision manual -- equipo Back")
     st.warning("Solo para el equipo Back. Cada decision guardada mejora el sistema.")
@@ -137,18 +108,15 @@ elif pagina == "Revision Back":
         if not b_titulo.strip():
             st.error("El campo Titulo es obligatorio.")
         elif b_incorp and existe_duplicado(b_titulo.strip(), b_nivel):
-            st.error("DUPLICADO: El titulo '" + b_titulo.strip() + "' ya existe en la base con nivel '" + b_nivel + "'. Desmarca Incorporar si solo quieres registrar la decision.")
+            st.error("DUPLICADO: El titulo '" + b_titulo.strip() + "' ya existe con nivel '" + b_nivel + "'. Desmarca Incorporar si solo quieres registrar la decision.")
         else:
             aplica_bool = "Si" in b_aplica
             motor.guardar_decision(titulo=b_titulo.strip(), universidad=b_univ.strip(), pais=b_pais, aplica=aplica_bool, nivel=b_nivel, revisor=b_revisor.strip(), motivo=b_motivo.strip(), incorporar=b_incorp)
             get_motor.clear()
             for k in ("back_titulo","back_pre","ultimo_resultado"):
                 st.session_state.pop(k, None)
-            decision_txt = "Aplica" if aplica_bool else "No aplica"
-            st.success("Guardado: '" + b_titulo.strip() + "' -> " + decision_txt + " | Nivel: " + b_nivel)
+            st.success("Guardado: '" + b_titulo.strip() + "' -> " + ("Aplica" if aplica_bool else "No aplica") + " | Nivel: " + b_nivel)
 
-
-# PAG 3: CARGAR DATOS
 elif pagina == "Cargar datos":
     st.header("Cargar base historica de titulos")
     st.info("Sube un CSV. Detecta duplicados por nombre + nivel sin importar universidad ni pais.")
@@ -207,8 +175,6 @@ elif pagina == "Cargar datos":
     plantilla = pd.DataFrame([{"nombre_titulo":"Administracion de Empresas","universidad":"Universidad Nacional","pais":"Colombia","aplica":"","nivel":"universitario","semestre":5},{"nombre_titulo":"Maestria en Finanzas","universidad":"EAFIT","pais":"Colombia","aplica":"","nivel":"maestria","semestre":7}])
     st.download_button("Descargar plantilla CSV", data=plantilla.to_csv(index=False).encode("utf-8"), file_name="plantilla_titulos.csv", mime="text/csv", use_container_width=True)
 
-
-# PAG 4: HISTORIAL
 elif pagina == "Historial":
     st.header("Historial de decisiones Back")
     if not CSV_DECISIONES.exists():
