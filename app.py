@@ -14,7 +14,7 @@ def get_motor():
 
 motor = get_motor()
 
-def existe_duplicado(nombre, nivel):
+def existe_duplicado(nombre, nivel, excluir_idx=None):
     n = nombre.strip().lower()
     nv = nivel.strip().lower()
     if CSV_TITULOS.exists():
@@ -26,7 +26,8 @@ def existe_duplicado(nombre, nivel):
     if CSV_DECISIONES.exists():
         df2 = pd.read_csv(CSV_DECISIONES)
         if not df2.empty and "nivel_confirmado" in df2.columns:
-            m2 = (df2["nombre_titulo"].astype(str).str.lower().str.strip() == n) & (df2["nivel_confirmado"].astype(str).str.lower().str.strip() == nv)
+            df2_check = df2.drop(index=excluir_idx) if excluir_idx is not None and excluir_idx in df2.index else df2
+            m2 = (df2_check["nombre_titulo"].astype(str).str.lower().str.strip() == n) & (df2_check["nivel_confirmado"].astype(str).str.lower().str.strip() == nv)
             if m2.any():
                 return True
     return False
@@ -53,9 +54,12 @@ with st.sidebar:
         st.cache_resource.clear()
         st.rerun()
 
-PAISES = ["Colombia","Mexico","Argentina","Chile","Peru","Ecuador","Venezuela","Bolivia","Espana","Estados Unidos","Otro"]
+PAISES  = ["Colombia","Mexico","Argentina","Chile","Peru","Ecuador","Venezuela","Bolivia","Espana","Estados Unidos","Otro"]
+PAISES_B = ["Colombia","Mexico","Argentina","Chile","Peru","Ecuador","Venezuela","Espana","Otro"]
 NIVELES = ["universitario","maestria","especializacion","doctorado","tecnologo","bachillerato"]
 
+
+# PAG 1: VALIDAR
 if pagina == "Validar titulo":
     st.header("Validar titulo academico")
     st.info("Ingresa el titulo del cliente. El Back siempre toma la decision final.")
@@ -85,38 +89,106 @@ if pagina == "Validar titulo":
             st.caption("Metodo: " + r.metodo + " | " + r.razon)
             st.session_state["ultimo_resultado"] = {"titulo": titulo.strip(), "universidad": universidad.strip(), "pais": pais, "resultado": r}
 
+
+# PAG 2: BACK
 elif pagina == "Revision Back":
     st.header("Revision manual -- equipo Back")
-    st.warning("Solo para el equipo Back. Cada decision guardada mejora el sistema.")
-    prefill = st.session_state.get("back_titulo", "")
-    ult = st.session_state.get("ultimo_resultado", {})
-    PAISES_B = ["Colombia","Mexico","Argentina","Chile","Peru","Ecuador","Venezuela","Espana","Otro"]
-    with st.form("form_back", clear_on_submit=True):
-        b_titulo = st.text_input("Titulo revisado *", value=prefill, placeholder="Nombre exacto del titulo")
-        bc1, bc2 = st.columns(2)
-        b_univ = bc1.text_input("Universidad", value=ult.get("universidad",""))
-        idx_pais = (PAISES_B.index(ult.get("pais","Colombia")) if ult.get("pais","Colombia") in PAISES_B else 0)
-        b_pais = bc2.selectbox("Pais", PAISES_B, index=idx_pais)
-        bd1, bd2 = st.columns(2)
-        b_aplica = bd1.radio("Este titulo aplica?", ["Si, aplica", "No aplica"])
-        b_nivel = bd2.selectbox("Nivel academico confirmado", NIVELES)
-        b_revisor = st.text_input("Nombre del revisor", placeholder="Ej: Ana Gomez / Area Back")
-        b_motivo = st.text_area("Observaciones", placeholder="Ej: Verificado con acreditacion CESU.", height=90)
-        b_incorp = st.checkbox("Incorporar a la base de conocimiento", value=True, help="Valida duplicados por nombre+nivel antes de agregar.")
-        b_submit = st.form_submit_button("Guardar decision Back", use_container_width=True)
-    if b_submit:
-        if not b_titulo.strip():
-            st.error("El campo Titulo es obligatorio.")
-        elif b_incorp and existe_duplicado(b_titulo.strip(), b_nivel):
-            st.error("DUPLICADO: El titulo '" + b_titulo.strip() + "' ya existe con nivel '" + b_nivel + "'. Desmarca Incorporar si solo quieres registrar la decision.")
-        else:
-            aplica_bool = "Si" in b_aplica
-            motor.guardar_decision(titulo=b_titulo.strip(), universidad=b_univ.strip(), pais=b_pais, aplica=aplica_bool, nivel=b_nivel, revisor=b_revisor.strip(), motivo=b_motivo.strip(), incorporar=b_incorp)
-            get_motor.clear()
-            for k in ("back_titulo","back_pre","ultimo_resultado"):
-                st.session_state.pop(k, None)
-            st.success("Guardado: '" + b_titulo.strip() + "' -> " + ("Aplica" if aplica_bool else "No aplica") + " | Nivel: " + b_nivel)
 
+    tab_nueva, tab_editar = st.tabs(["Nueva decision", "Editar decision existente"])
+
+    # ---- TAB: NUEVA DECISION ----
+    with tab_nueva:
+        st.warning("Solo para el equipo Back. Cada decision guardada mejora el sistema.")
+        prefill = st.session_state.get("back_titulo", "")
+        ult = st.session_state.get("ultimo_resultado", {})
+        with st.form("form_back", clear_on_submit=True):
+            b_titulo = st.text_input("Titulo revisado *", value=prefill, placeholder="Nombre exacto del titulo")
+            bc1, bc2 = st.columns(2)
+            b_univ = bc1.text_input("Universidad", value=ult.get("universidad",""))
+            idx_pais = (PAISES_B.index(ult.get("pais","Colombia")) if ult.get("pais","Colombia") in PAISES_B else 0)
+            b_pais = bc2.selectbox("Pais", PAISES_B, index=idx_pais)
+            bd1, bd2 = st.columns(2)
+            b_aplica = bd1.radio("Este titulo aplica?", ["Si, aplica", "No aplica"])
+            b_nivel = bd2.selectbox("Nivel academico confirmado", NIVELES)
+            b_revisor = st.text_input("Nombre del revisor", placeholder="Ej: Ana Gomez / Area Back")
+            b_motivo = st.text_area("Observaciones", placeholder="Ej: Verificado con acreditacion CESU.", height=90)
+            b_incorp = st.checkbox("Incorporar a la base de conocimiento", value=True, help="Valida duplicados por nombre+nivel antes de agregar.")
+            b_submit = st.form_submit_button("Guardar decision Back", use_container_width=True)
+        if b_submit:
+            if not b_titulo.strip():
+                st.error("El campo Titulo es obligatorio.")
+            elif b_incorp and existe_duplicado(b_titulo.strip(), b_nivel):
+                st.error("DUPLICADO: El titulo '" + b_titulo.strip() + "' ya existe con nivel '" + b_nivel + "'. Desmarca Incorporar si solo quieres registrar la decision.")
+            else:
+                aplica_bool = "Si" in b_aplica
+                motor.guardar_decision(titulo=b_titulo.strip(), universidad=b_univ.strip(), pais=b_pais, aplica=aplica_bool, nivel=b_nivel, revisor=b_revisor.strip(), motivo=b_motivo.strip(), incorporar=b_incorp)
+                get_motor.clear()
+                for k in ("back_titulo","back_pre","ultimo_resultado"):
+                    st.session_state.pop(k, None)
+                st.success("Guardado: '" + b_titulo.strip() + "' -> " + ("Aplica" if aplica_bool else "No aplica") + " | Nivel: " + b_nivel)
+
+    # ---- TAB: EDITAR DECISION ----
+    with tab_editar:
+        st.info("Busca un registro ya guardado para corregir el titulo, la decision, el nivel o las observaciones.")
+        if not CSV_DECISIONES.exists():
+            st.warning("Aun no hay decisiones registradas para editar.")
+        else:
+            df_dec = pd.read_csv(CSV_DECISIONES)
+            if df_dec.empty:
+                st.warning("El historial de decisiones esta vacio.")
+            else:
+                buscar_edit = st.text_input("Buscar titulo a editar", placeholder="Escribe parte del nombre...", key="buscar_editar")
+                if buscar_edit.strip():
+                    df_filtrado = df_dec[df_dec["nombre_titulo"].astype(str).str.contains(buscar_edit.strip(), case=False, na=False)]
+                    if df_filtrado.empty:
+                        st.warning("No se encontraron registros con ese termino.")
+                    else:
+                        st.markdown("**Registros encontrados:**")
+                        st.dataframe(df_filtrado[["nombre_titulo","nivel_confirmado","decision_aplica","revisor","motivo"]].reset_index(), use_container_width=True, hide_index=True)
+                        indices = df_filtrado.index.tolist()
+                        opciones = [str(i) + " - " + str(df_dec.loc[i,"nombre_titulo"]) for i in indices]
+                        sel = st.selectbox("Selecciona el registro a editar", opciones, key="sel_editar")
+                        if sel:
+                            idx_sel = int(sel.split(" - ")[0])
+                            row = df_dec.loc[idx_sel]
+                            st.markdown("---")
+                            st.markdown("**Editando registro #" + str(idx_sel) + "**")
+                            with st.form("form_editar", clear_on_submit=False):
+                                e_titulo = st.text_input("Titulo *", value=str(row.get("nombre_titulo","")))
+                                ec1, ec2 = st.columns(2)
+                                e_univ = ec1.text_input("Universidad", value=str(row.get("universidad","")))
+                                pais_actual = str(row.get("pais","Colombia"))
+                                idx_ep = PAISES_B.index(pais_actual) if pais_actual in PAISES_B else 0
+                                e_pais = ec2.selectbox("Pais", PAISES_B, index=idx_ep, key="edit_pais")
+                                ed1, ed2 = st.columns(2)
+                                aplica_actual = str(row.get("decision_aplica","")).lower() in ["true","si","1"]
+                                e_aplica = ed1.radio("Aplica?", ["Si, aplica","No aplica"], index=(0 if aplica_actual else 1), key="edit_aplica")
+                                nivel_actual = str(row.get("nivel_confirmado","universitario"))
+                                idx_nv = NIVELES.index(nivel_actual) if nivel_actual in NIVELES else 0
+                                e_nivel = ed2.selectbox("Nivel confirmado", NIVELES, index=idx_nv, key="edit_nivel")
+                                e_revisor = st.text_input("Revisor", value=str(row.get("revisor","")))
+                                e_motivo = st.text_area("Observaciones / Motivo de correccion", value=str(row.get("motivo","")), height=90)
+                                e_submit = st.form_submit_button("Guardar cambios", use_container_width=True)
+                            if e_submit:
+                                if not e_titulo.strip():
+                                    st.error("El titulo no puede estar vacio.")
+                                else:
+                                    df_dec.loc[idx_sel, "nombre_titulo"]    = e_titulo.strip()
+                                    df_dec.loc[idx_sel, "universidad"]       = e_univ.strip()
+                                    df_dec.loc[idx_sel, "pais"]              = e_pais
+                                    df_dec.loc[idx_sel, "decision_aplica"]   = "Si" in e_aplica
+                                    df_dec.loc[idx_sel, "nivel_confirmado"]  = e_nivel
+                                    df_dec.loc[idx_sel, "revisor"]           = e_revisor.strip()
+                                    df_dec.loc[idx_sel, "motivo"]            = e_motivo.strip()
+                                    df_dec.to_csv(CSV_DECISIONES, index=False)
+                                    get_motor.clear()
+                                    st.success("Registro actualizado correctamente.")
+                                    st.rerun()
+                else:
+                    st.caption("Escribe al menos una letra para buscar registros.")
+
+
+# PAG 3: CARGAR DATOS
 elif pagina == "Cargar datos":
     st.header("Cargar base historica de titulos")
     st.info("Sube un CSV. Detecta duplicados por nombre + nivel sin importar universidad ni pais.")
@@ -175,6 +247,8 @@ elif pagina == "Cargar datos":
     plantilla = pd.DataFrame([{"nombre_titulo":"Administracion de Empresas","universidad":"Universidad Nacional","pais":"Colombia","aplica":"","nivel":"universitario","semestre":5},{"nombre_titulo":"Maestria en Finanzas","universidad":"EAFIT","pais":"Colombia","aplica":"","nivel":"maestria","semestre":7}])
     st.download_button("Descargar plantilla CSV", data=plantilla.to_csv(index=False).encode("utf-8"), file_name="plantilla_titulos.csv", mime="text/csv", use_container_width=True)
 
+
+# PAG 4: HISTORIAL
 elif pagina == "Historial":
     st.header("Historial de decisiones Back")
     if not CSV_DECISIONES.exists():
