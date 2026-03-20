@@ -68,6 +68,61 @@ def gh_save_pendientes(df, sha, mensaje="Update pendientes_back.csv"):
     except Exception as e:
         return False, str(e)
 
+
+def gh_get_decisiones():
+    """Lee decisiones_back.csv desde GitHub. Retorna (df, sha)."""
+    gh_token, gh_repo = get_github_config()
+    api_url = "https://api.github.com/repos/" + gh_repo + "/contents/decisiones_back.csv"
+    req = urllib.request.Request(api_url,
+        headers={"Authorization": "token " + gh_token, "Accept": "application/vnd.github.v3+json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read().decode())
+            sha  = data["sha"]
+            content = base64.b64decode(data["content"].replace("\n","")).decode("utf-8")
+            df = pd.read_csv(io.StringIO(content))
+            return df, sha
+    except Exception:
+        cols = ["nombre_titulo","universidad","pais","nivel_confirmado","decision_aplica","revisor","motivo","fecha","incorporar","semestre"]
+        return pd.DataFrame(columns=cols), None
+
+def gh_save_decision(titulo, universidad, pais, nivel, aplica, revisor, motivo, incorporar=True):
+    """Agrega una decision a decisiones_back.csv en GitHub."""
+    gh_token, gh_repo = get_github_config()
+    if not gh_token:
+        return False, "No hay GITHUB_TOKEN configurado."
+    df, sha = gh_get_decisiones()
+    nueva = pd.DataFrame([{
+        "nombre_titulo":  titulo,
+        "universidad":    universidad,
+        "pais":           pais,
+        "nivel_confirmado": nivel,
+        "decision_aplica": str(aplica),
+        "revisor":        revisor,
+        "motivo":         motivo,
+        "fecha":          datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "incorporar":     str(incorporar).lower(),
+        "semestre":       SEMESTRE_POR_NIVEL.get(nivel, "")
+    }])
+    df = pd.concat([df, nueva], ignore_index=True)
+    api_url = "https://api.github.com/repos/" + gh_repo + "/contents/decisiones_back.csv"
+    csv_str = df.to_csv(index=False)
+    b64c    = base64.b64encode(csv_str.encode("utf-8")).decode("ascii")
+    body    = {"message": "Add decision: " + titulo[:50], "content": b64c, "branch": "main"}
+    if sha:
+        body["sha"] = sha
+    req = urllib.request.Request(api_url, data=json.dumps(body).encode("utf-8"), method="PUT",
+        headers={"Authorization": "token " + gh_token,
+                 "Accept": "application/vnd.github.v3+json",
+                 "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return True, None
+    except urllib.error.HTTPError as e:
+        return False, str(e.code) + ": " + e.read().decode()[:200]
+    except Exception as e:
+        return False, str(e)
+
 def contar_pendientes():
     df, _ = gh_get_pendientes()
     if df.empty or "estado" not in df.columns:
@@ -182,11 +237,11 @@ if pagina == "Validar titulo":
 
     tab_consultar, tab_solicitar = st.tabs(["Consultar titulo", "Solicitar validacion al Back"])
 
-    # ---- PESTAÃA 1: CONSULTAR ----
+    # ---- PESTAÃÂA 1: CONSULTAR ----
     with tab_consultar:
         st.info("Ingresa el titulo y universidad para verificar si ya existe una decision del Back.")
         c1, c2 = st.columns(2)
-        busq_titulo = c1.text_input("Nombre del titulo", placeholder="Ej: TecnÃ³logo en Mercadotecnia", key="busq_t")
+        busq_titulo = c1.text_input("Nombre del titulo", placeholder="Ej: TecnÃÂ³logo en Mercadotecnia", key="busq_t")
         busq_univ   = c2.text_input("Universidad (opcional)", placeholder="Ej: Universidad de Santander", key="busq_u")
 
         if st.button("Consultar", use_container_width=True, key="btn_consultar"):
@@ -205,7 +260,7 @@ if pagina == "Validar titulo":
                         df_dec["_sim_u"] = df_dec["universidad"].astype(str).apply(lambda x: similar(x, busq_univ.strip())) if busq_univ.strip() else pd.Series([1.0]*len(df_dec))
                         # Umbral: titulo >70% similar
                         df_match = df_dec[(df_dec["_sim_t"] >= 0.70)].copy()
-                        # Si hay universidad, filtrar tambiÃ©n por similitud de universidad >60%
+                        # Si hay universidad, filtrar tambiÃÂ©n por similitud de universidad >60%
                         if busq_univ.strip():
                             df_match = df_match[df_match["_sim_u"] >= 0.60]
                         df_match = df_match.sort_values("_sim_t", ascending=False)
@@ -251,9 +306,9 @@ if pagina == "Validar titulo":
                 if not resultado_encontrado:
                     st.info("No se encontro decision previa para este titulo. Ve a la pestana **Solicitar validacion al Back** para enviarlo.")
 
-    # ---- PESTAÃA 2: SOLICITAR ----
+    # ---- PESTAÃÂA 2: SOLICITAR ----
     with tab_solicitar:
-        st.warning("Usa esta pestana solo si la consulta en la pestana anterior no arrojÃ³ resultados.")
+        st.warning("Usa esta pestana solo si la consulta en la pestana anterior no arrojÃÂ³ resultados.")
         with st.form("form_validar", clear_on_submit=True):
             titulo      = st.text_input("Nombre del titulo *", placeholder="Ej: Administracion de Empresas")
             col1, col2  = st.columns(2)
@@ -387,7 +442,9 @@ elif pagina == "Revision Back":
                                     df_p.loc[i,"motivo"]           = p_motivo.strip()
                                     ok, err = gh_save_pendientes(df_p, sha_p, ("Approve" if aprobar else "Reject")+": "+titulo_p)
                                     if ok:
-                                        motor.guardar_decision(titulo=titulo_p, universidad=str(row.get("universidad","")), pais=str(row.get("pais","Colombia")), aplica=aplica_bool, nivel=p_nivel, revisor=p_revisor.strip(), motivo=p_motivo.strip(), incorporar=p_incorp)
+                                        ok_dec, err_dec = gh_save_decision(titulo=titulo_p, universidad=str(row.get("universidad","")), pais=str(row.get("pais","Colombia")), nivel=p_nivel, aplica=aplica_bool, revisor=p_revisor.strip(), motivo=p_motivo.strip(), incorporar=p_incorp)
+                                    if not ok_dec:
+                                        st.warning("Guardado en GitHub con advertencia: " + str(err_dec))
                                         get_motor.clear()
                                         st.success("Diploma " + ("APROBADO" if aprobar else "RECHAZADO") + ".")
                                         st.rerun()
@@ -414,7 +471,9 @@ elif pagina == "Revision Back":
             elif b_incorp and existe_duplicado(b_titulo.strip(), b_nivel): st.error("DUPLICADO: '"+b_titulo.strip()+"' ya existe con nivel '"+b_nivel+"'.")
             else:
                 aplica_bool = "Si" in b_aplica
-                motor.guardar_decision(titulo=b_titulo.strip(), universidad=b_univ.strip(), pais=b_pais, aplica=aplica_bool, nivel=b_nivel, revisor=b_revisor.strip(), motivo=b_motivo.strip(), incorporar=b_incorp)
+                ok_dec2, err_dec2 = gh_save_decision(titulo=b_titulo.strip(), universidad=b_univ.strip(), pais=b_pais, nivel=b_nivel, aplica=aplica_bool, revisor=b_revisor.strip(), motivo=b_motivo.strip(), incorporar=b_incorp)
+                if not ok_dec2:
+                    st.warning("Advertencia al guardar: " + str(err_dec2))
                 get_motor.clear()
                 for k in ("back_titulo","ultimo_resultado"): st.session_state.pop(k,None)
                 st.success("Guardado: '"+b_titulo.strip()+"' -> "+("Aplica" if aplica_bool else "No aplica"))
