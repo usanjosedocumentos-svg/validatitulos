@@ -1,0 +1,37 @@
+nombre_titulo,universidad,pais,aplica,nivel,semestre
+Administración de Empresas,Universidad de los Andes,Colombia,true,universitario,5
+Administración de Empresas,Universidad Nacional,Colombia,true,universitario,5
+Ingeniería de Sistemas,Universidad Nacional,Colombia,true,universitario,5
+Ingeniería de Sistemas,Universidad Javeriana,Colombia,true,universitario,5
+Ingeniería Industrial,Universidad del Valle,Colombia,true,universitario,5
+Ingeniería Industrial,EAFIT,Colombia,true,universitario,5
+Licenciatura en Contaduría,Universidad Libre,Colombia,true,universitario,5
+Contaduría Pública,Universidad Externado,Colombia,true,universitario,5
+Medicina,Universidad Javeriana,Colombia,true,universitario,6
+Derecho,Universidad de los Andes,Colombia,true,universitario,5
+Psicología,Universidad Nacional,Colombia,true,universitario,5
+Arquitectura,Universidad Nacional,Colombia,true,universitario,5
+Economía,Universidad de los Andes,Colombia,true,universitario,5
+Enfermería,Universidad Nacional,Colombia,true,universitario,5
+Comunicación Social,Universidad Javeriana,Colombia,true,universitario,5
+Maestría en Administración de Empresas,EAFIT,Colombia,true,maestría,7
+Maestría en Ingeniería,Universidad Nacional,Colombia,true,maestría,7
+MBA,Universidad de los Andes,Colombia,true,maestría,7
+Especialización en Gerencia de Proyectos,EAFIT,Colombia,true,especialización,6
+Especialización en Finanzas,Universidad Externado,Colombia,true,especialización,6
+Doctorado en Ciencias Económicas,Universidad Externado,Colombia,true,doctorado,8
+Doctorado en Ingeniería,Universidad Nacional,Colombia,true,doctorado,8
+Tecnólogo en Sistemas,SENA,Colombia,false,tecnólogo,3
+Tecnólogo en Gestión Empresarial,SENA,Colombia,false,tecnólogo,3
+Técnico en Sistemas,SENA,Colombia,false,bachillerato,1
+Técnico en Contabilidad,SENA,Colombia,false,bachillerato,1
+Bachiller,Colegio Nacional,Colombia,false,bachillerato,1
+Curso de Excel Avanzado,n/a,Colombia,false,bachillerato,1
+Diplomado en Marketing Digital,n/a,Colombia,false,bachillerato,1
+Taller de Liderazgo,n/a,Colombia,false,bachillerato,1
+Ingeniería en Computación,UNAM,México,true,universitario,5
+Licenciatura en Derecho,UNAM,México,true,universitario,5
+Licenciatura en Administración,ITESM,México,true,universitario,5
+Ingeniería Civil,Universidad de Chile,Chile,true,universitario,5
+Psicología,UBA,Argentina,true,universitario,5
+Administración de Empresas,UBA,Argentina,true,universitario,5
