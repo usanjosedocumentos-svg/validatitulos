@@ -1,3 +1,2 @@
 id,fecha,hora,nombre_titulo,universidad,pais,nivel_detectado,titular,texto_diploma,estado,revisor,decision,nivel_confirmado,motivo
-20260320205138,2026-03-20,20:51:38,TECNÓLOGO EN MERCADOTECNIA Y PUBLICIDAD,UNIVERSIDAD DE SANTANDER,Colombia,tecnologo,,,APROBADO,,Aplica,tecnologo,solo para administracion de empresas
-20260320205830,2026-03-20,20:58:30,TECNÓLOGO EN MERCADOTECNIA Y PUBLICIDAD,UNIVERSIDAD DE SANTANDER,Colombia,tecnologo,,,PENDIENTE,,,,
+20260320205138,2026-03-20,20:51:38,TECNOLOGO EN MERCADOTECNIA Y PUBLICIDAD,UNIVERSIDAD DE SANTANDER,Colombia,tecnologo,,,APROBADO,,Aplica,tecnologo,solo para administracion de empresas
