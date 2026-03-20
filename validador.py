@@ -92,10 +92,12 @@ class ValidadorCSV:
             frames.append(pd.read_csv(CSV_TITULOS))
         if CSV_DECISIONES.exists():
             dec = pd.read_csv(CSV_DECISIONES)
-            dec = dec[dec["incorporar"].astype(str).str.lower() == "true"]
+            if "incorporar" in dec.columns:
+                dec = dec[dec["incorporar"].astype(str).str.lower() == "true"]
             if not dec.empty:
                 dec = dec.rename(columns={"decision_aplica": "aplica", "nivel_confirmado": "nivel"})
-                frames.append(dec[["nombre_titulo", "universidad", "pais", "aplica", "nivel", "semestre"]])
+                cols = [c for c in ["nombre_titulo","universidad","pais","aplica","nivel","semestre"] if c in dec.columns]
+                frames.append(dec[cols])
         if frames:
             self._df = pd.concat(frames, ignore_index=True)
             self._df["_norm"] = self._df["nombre_titulo"].astype(str).apply(_norm)
