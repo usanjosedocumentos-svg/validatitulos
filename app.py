@@ -165,81 +165,131 @@ if pagina == "Validar titulo":
     st.header("Validar titulo academico")
     if pendientes_count > 0:
         st.warning("El Back tiene " + str(pendientes_count) + " solicitud(es) pendiente(s) por aprobar.")
-    st.info("Ingresa el titulo del cliente. Se enviara automaticamente al Back para su aprobacion.")
-    with st.form("form_validar", clear_on_submit=True):
-        titulo = st.text_input("Nombre del titulo *", placeholder="Ej: Administracion de Empresas")
-        col1, col2 = st.columns(2)
-        universidad = col1.text_input("Universidad", placeholder="Ej: Universidad Nacional")
-        pais = col2.selectbox("Pais", PAISES)
-        col3, col4 = st.columns(2)
-        nivel_manual = col3.selectbox("Nivel academico (opcional)", ["-- Seleccionar --"] + NIVELES)
-        titular = col4.text_input("Nombre del titular (opcional)", placeholder="Ej: Juan Perez")
-        submitted = st.form_submit_button("Enviar al Back para aprobacion", use_container_width=True, type="primary")
-    if submitted:
-        if not titulo.strip():
-            st.error("Por favor ingresa el nombre del titulo.")
-        else:
-            nivel_enviar = nivel_manual if nivel_manual != "-- Seleccionar --" else "universitario"
-            pais_enviar = pais if pais in PAISES_B else "Otro"
-            titulo_norm = titulo.strip().lower()
-            # Verificar si ya existe una decision del Back para este titulo
-            decision_previa = None
-            if CSV_DECISIONES.exists():
-                df_dec_check = pd.read_csv(CSV_DECISIONES)
-                if not df_dec_check.empty and "nombre_titulo" in df_dec_check.columns:
-                    match = df_dec_check[df_dec_check["nombre_titulo"].astype(str).str.lower().str.strip() == titulo_norm]
-                    if not match.empty:
-                        decision_previa = match.iloc[-1]
-            # Verificar si ya esta pendiente
-            df_p_check, _ = gh_get_pendientes()
-            ya_pendiente = False
-            if not df_p_check.empty and "nombre_titulo" in df_p_check.columns:
-                pend_match = df_p_check[
-                    (df_p_check["nombre_titulo"].astype(str).str.lower().str.strip() == titulo_norm) &
-                    (df_p_check["estado"].astype(str).str.upper() == "PENDIENTE")
-                ]
-                ya_pendiente = not pend_match.empty
 
-            if decision_previa is not None:
-                # Ya tiene decision del Back — mostrarla directamente
-                aplica_prev = str(decision_previa.get("decision_aplica","")).lower() in ["true","1","si"]
-                nivel_prev  = str(decision_previa.get("nivel_confirmado",""))
-                motivo_prev = str(decision_previa.get("motivo",""))
-                revisor_prev = str(decision_previa.get("revisor",""))
-                if aplica_prev:
-                    st.success("APLICA | Nivel: " + nivel_prev.capitalize() + " | Decision del Back")
-                else:
-                    st.error("NO APLICA | Decision del Back")
-                if motivo_prev and motivo_prev != "nan":
-                    st.info("Observacion del Back: " + motivo_prev)
-                if revisor_prev and revisor_prev != "nan":
-                    st.caption("Revisado por: " + revisor_prev)
-            elif ya_pendiente:
-                st.warning("Este titulo ya esta en espera de decision del Back. El equipo lo revisara pronto.")
+    tab_consultar, tab_solicitar = st.tabs(["Consultar titulo", "Solicitar validacion al Back"])
+
+    # ---- PESTAÑA 1: CONSULTAR ----
+    with tab_consultar:
+        st.info("Ingresa el titulo y universidad para verificar si ya existe una decision del Back.")
+        c1, c2 = st.columns(2)
+        busq_titulo = c1.text_input("Nombre del titulo", placeholder="Ej: Tecnólogo en Mercadotecnia", key="busq_t")
+        busq_univ   = c2.text_input("Universidad (opcional)", placeholder="Ej: Universidad de Santander", key="busq_u")
+
+        if st.button("Consultar", use_container_width=True, key="btn_consultar"):
+            if not busq_titulo.strip():
+                st.error("Ingresa el nombre del titulo.")
             else:
+                def similar(a, b):
+                    a = unicodedata.normalize("NFD", a.lower().strip())
+                    a = "".join(c for c in a if unicodedata.category(c) != "Mn")
+                    b = unicodedata.normalize("NFD", b.lower().strip())
+                    b = "".join(c for c in b if unicodedata.category(c) != "Mn")
+                    if a == b: return 1.0
+                    if a in b or b in a: return 0.85
+                    # Similitud por palabras comunes
+                    wa = set(a.split()); wb = set(b.split())
+                    if not wa or not wb: return 0.0
+                    comunes = wa & wb
+                    return len(comunes) / max(len(wa), len(wb))
+
+                resultado_encontrado = False
+
+                # Buscar en decisiones_back.csv
+                if CSV_DECISIONES.exists():
+                    df_dec = pd.read_csv(CSV_DECISIONES)
+                    if not df_dec.empty and "nombre_titulo" in df_dec.columns:
+                        # Calcular similitud para cada registro
+                        df_dec["_sim_t"] = df_dec["nombre_titulo"].astype(str).apply(lambda x: similar(x, busq_titulo.strip()))
+                        df_dec["_sim_u"] = df_dec["universidad"].astype(str).apply(lambda x: similar(x, busq_univ.strip())) if busq_univ.strip() else pd.Series([1.0]*len(df_dec))
+                        # Umbral: titulo >70% similar
+                        df_match = df_dec[(df_dec["_sim_t"] >= 0.70)].copy()
+                        # Si hay universidad, filtrar también por similitud de universidad >60%
+                        if busq_univ.strip():
+                            df_match = df_match[df_match["_sim_u"] >= 0.60]
+                        df_match = df_match.sort_values("_sim_t", ascending=False)
+                        if not df_match.empty:
+                            resultado_encontrado = True
+                            st.success("Se encontraron " + str(len(df_match)) + " decision(es) del Back para este titulo:")
+                            for _, row in df_match.iterrows():
+                                aplica = str(row.get("decision_aplica","")).lower() in ["true","1","si"]
+                                nivel  = str(row.get("nivel_confirmado",""))
+                                motivo = str(row.get("motivo",""))
+                                revisor = str(row.get("revisor",""))
+                                univ_r  = str(row.get("universidad",""))
+                                sim_pct = int(row["_sim_t"]*100)
+                                with st.container():
+                                    st.markdown("---")
+                                    col_r1, col_r2 = st.columns([2,1])
+                                    with col_r1:
+                                        st.write("Titulo registrado: **" + str(row.get("nombre_titulo","")) + "**")
+                                        if univ_r and univ_r != "nan": st.write("Universidad: " + univ_r)
+                                        if motivo and motivo != "nan": st.info("Observacion del Back: " + motivo)
+                                        if revisor and revisor != "nan": st.caption("Revisado por: " + revisor)
+                                    with col_r2:
+                                        if aplica:
+                                            st.success("APLICA")
+                                            if nivel and nivel != "nan": st.write("Nivel: " + nivel.capitalize())
+                                        else:
+                                            st.error("NO APLICA")
+                                        st.caption("Similitud: " + str(sim_pct) + "%")
+                                registrar_consulta(busq_titulo.strip(), "Aplica" if aplica else "No aplica", nivel, 0)
+
+                # Buscar si esta PENDIENTE en el Back
+                if not resultado_encontrado:
+                    df_p_check, _ = gh_get_pendientes()
+                    if not df_p_check.empty and "nombre_titulo" in df_p_check.columns:
+                        df_p_check["_sim"] = df_p_check["nombre_titulo"].astype(str).apply(lambda x: similar(x, busq_titulo.strip()))
+                        df_pend_match = df_p_check[(df_p_check["_sim"]>=0.70) & (df_p_check["estado"].astype(str).str.upper()=="PENDIENTE")]
+                        if not df_pend_match.empty:
+                            resultado_encontrado = True
+                            st.warning("Este titulo esta pendiente de decision del Back. El equipo lo revisara pronto.")
+                            for _, rp in df_pend_match.iterrows():
+                                st.caption("Titulo en espera: " + str(rp.get("nombre_titulo","")) + " | Enviado: " + str(rp.get("fecha","")))
+
+                if not resultado_encontrado:
+                    st.info("No se encontro decision previa para este titulo. Ve a la pestana **Solicitar validacion al Back** para enviarlo.")
+
+    # ---- PESTAÑA 2: SOLICITAR ----
+    with tab_solicitar:
+        st.warning("Usa esta pestana solo si la consulta en la pestana anterior no arrojó resultados.")
+        with st.form("form_validar", clear_on_submit=True):
+            titulo      = st.text_input("Nombre del titulo *", placeholder="Ej: Administracion de Empresas")
+            col1, col2  = st.columns(2)
+            universidad = col1.text_input("Universidad", placeholder="Ej: Universidad Nacional")
+            pais        = col2.selectbox("Pais", PAISES)
+            col3, col4  = st.columns(2)
+            nivel_manual = col3.selectbox("Nivel academico (opcional)", ["-- Seleccionar --"] + NIVELES)
+            titular      = col4.text_input("Nombre del titular (opcional)")
+            submitted    = st.form_submit_button("Enviar al Back para aprobacion", use_container_width=True, type="primary")
+        if submitted:
+            if not titulo.strip():
+                st.error("Por favor ingresa el nombre del titulo.")
+            else:
+                nivel_enviar = nivel_manual if nivel_manual != "-- Seleccionar --" else "universitario"
+                pais_enviar  = pais if pais in PAISES_B else "Otro"
                 nuevo_id = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
                 df_p, sha_p = gh_get_pendientes()
                 nueva = pd.DataFrame([{
                     "id": nuevo_id,
                     "fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-                    "hora": datetime.now(timezone.utc).strftime("%H:%M:%S"),
-                    "nombre_titulo": titulo.strip(),
-                    "universidad": universidad.strip(),
-                    "pais": pais_enviar,
+                    "hora":  datetime.now(timezone.utc).strftime("%H:%M:%S"),
+                    "nombre_titulo":   titulo.strip(),
+                    "universidad":     universidad.strip(),
+                    "pais":            pais_enviar,
                     "nivel_detectado": nivel_enviar,
-                    "titular": titular.strip(),
-                    "texto_diploma": "",
-                    "estado": "PENDIENTE",
+                    "titular":         titular.strip(),
+                    "texto_diploma":   "",
+                    "estado":          "PENDIENTE",
                     "revisor": "", "decision": "", "nivel_confirmado": "", "motivo": ""
                 }])
                 df_p = pd.concat([df_p, nueva], ignore_index=True)
-                ok, err = gh_save_pendientes(df_p, sha_p, "New validation request: " + titulo.strip())
+                ok, err = gh_save_pendientes(df_p, sha_p, "New request: " + titulo.strip())
                 if ok:
                     registrar_consulta(titulo.strip(), "Enviado al Back", nivel_enviar, 0)
                     st.success("Solicitud enviada al Back correctamente.")
                     st.info("El equipo Back recibira la alerta y tomara la decision.")
                 else:
-                    st.error("Error al enviar al Back: " + str(err))
+                    st.error("Error al enviar: " + str(err))
 
 
 elif pagina == "Ingresar diploma":
