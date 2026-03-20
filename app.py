@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 from validador import ValidadorCSV, SEMESTRE_POR_NIVEL, CSV_DECISIONES, CSV_TITULOS
 
-st.set_page_config(page_title="ValidaTitulos", page_icon="🎓",
+st.set_page_config(page_title="ValidaTitulos", page_icon="ð",
                    layout="wide", initial_sidebar_state="expanded")
 
 @st.cache_resource
@@ -58,12 +58,12 @@ div[data-testid="stDataFrame"] th div { color: #222222 !important; font-weight:7
 with st.sidebar:
     st.markdown(
         "<div style='padding:0.5rem 0 1.2rem'>"
-        "<div style='font-size:1.35rem;font-weight:700;color:#fff'>🎓 ValidaTitulos</div>"
+        "<div style='font-size:1.35rem;font-weight:700;color:#fff'>ð ValidaTitulos</div>"
         "<div style='font-size:0.72rem;color:#888'>Sistema de uso interno</div>"
         "</div>",
         unsafe_allow_html=True)
     pagina = st.radio("Nav",
-        ["📋 Validar titulo","📋 Revision Back","📂 Cargar datos","📊 Historial"],
+        ["ð Validar titulo","ð Revision Back","ð Cargar datos","ð Historial"],
         label_visibility="collapsed")
     stats = motor.stats()
     total_str = str(stats['total'])
@@ -73,7 +73,7 @@ with st.sidebar:
         "<span style='color:#aaa;font-size:0.78rem'>Registros totales</span>"
         "<span style='color:#fff;font-weight:700'>" + total_str + "</span></div>",
         unsafe_allow_html=True)
-    if st.button("🔄 Recargar base", use_container_width=True):
+    if st.button("ð Recargar base", use_container_width=True):
         get_motor.clear()
         st.cache_resource.clear()
         st.rerun()
@@ -84,9 +84,9 @@ NIVELES = ["universitario","maestria","especializacion",
            "doctorado","tecnologo","bachillerato"]
 
 
-# ─── PAG 1: VALIDAR ──────────────────────────────────────────────────────────
-if pagina == "📋 Validar titulo":
-    st.header("📋 Validar titulo academico")
+# âââ PAG 1: VALIDAR ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+if pagina == "ð Validar titulo":
+    st.header("ð Validar titulo academico")
     st.info("Ingresa el titulo del cliente. El Back siempre toma la decision final.")
     with st.form("form_validar", clear_on_submit=False):
         titulo      = st.text_input("Nombre del titulo *",
@@ -97,7 +97,7 @@ if pagina == "📋 Validar titulo":
         pais        = col2.selectbox("Pais", PAISES)
         st.file_uploader("Documento soporte (opcional)",
                          type=["pdf","png","jpg","jpeg"])
-        submitted = st.form_submit_button("📋 Validar titulo",
+        submitted = st.form_submit_button("ð Validar titulo",
                                           use_container_width=True)
     if submitted:
         if not titulo.strip():
@@ -106,18 +106,18 @@ if pagina == "📋 Validar titulo":
             with st.spinner("Consultando base historica..."):
                 r = motor.validar(titulo.strip(), universidad.strip(), pais)
             nivel_txt = (r.nivel or "").capitalize()
-            sem_txt   = str(r.semestre) + "°" if r.semestre else "—"
+            sem_txt   = str(r.semestre) + "Â°" if r.semestre else "â"
             if r.requiere_revision:
-                st.warning("⚠️ Requiere revision Back | "
+                st.warning("â ï¸ Requiere revision Back | "
                            "Confianza: " + str(r.confianza_pct) + "% | " + r.razon)
                 st.session_state["back_titulo"] = titulo.strip()
                 st.session_state["back_pre"]    = True
             elif r.aplica:
-                st.success("✅ Aplica | Nivel: " + nivel_txt +
+                st.success("â Aplica | Nivel: " + nivel_txt +
                            " | Semestre: " + sem_txt +
                            " | Confianza: " + str(r.confianza_pct) + "%")
             else:
-                st.error("❌ No aplica | Nivel: " + nivel_txt +
+                st.error("â No aplica | Nivel: " + nivel_txt +
                          " | Confianza: " + str(r.confianza_pct) + "%")
             st.caption("Metodo: " + r.metodo + " | " + r.razon)
             st.session_state["ultimo_resultado"] = {
@@ -125,9 +125,9 @@ if pagina == "📋 Validar titulo":
                 "pais": pais, "resultado": r}
 
 
-# ─── PAG 2: BACK ─────────────────────────────────────────────────────────────
-elif pagina == "📋 Revision Back":
-    st.header("📋 Revision manual — equipo Back")
+# âââ PAG 2: BACK âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+elif pagina == "ð Revision Back":
+    st.header("ð Revision manual â equipo Back")
     st.warning("Solo para el equipo Back. Cada decision guardada mejora el sistema.")
     prefill  = st.session_state.get("back_titulo", "")
     ult      = st.session_state.get("ultimo_resultado", {})
@@ -145,7 +145,7 @@ elif pagina == "📋 Revision Back":
         b_pais    = bc2.selectbox("Pais", PAISES_B, index=idx_pais)
         bd1, bd2  = st.columns(2)
         b_aplica  = bd1.radio("Este titulo aplica?",
-                              ["✅ Si, aplica", "❌ No aplica"])
+                              ["â Si, aplica", "â No aplica"])
         b_nivel   = bd2.selectbox("Nivel academico confirmado", NIVELES)
         b_revisor = st.text_input("Nombre del revisor",
                                   placeholder="Ej: Ana Gomez / Area Back")
@@ -153,9 +153,9 @@ elif pagina == "📋 Revision Back":
                                  placeholder="Ej: Verificado con acreditacion CESU.",
                                  height=90)
         b_incorp  = st.checkbox(
-            "✅ Incorporar a la base de conocimiento", value=True,
+            "â Incorporar a la base de conocimiento", value=True,
             help="Valida duplicados por nombre+nivel antes de agregar.")
-        b_submit  = st.form_submit_button("💾 Guardar decision Back",
+        b_submit  = st.form_submit_button("ð¾ Guardar decision Back",
                                           use_container_width=True)
 
     if b_submit:
@@ -163,7 +163,7 @@ elif pagina == "📋 Revision Back":
             st.error("El campo Titulo es obligatorio.")
         elif b_incorp and existe_duplicado(b_titulo.strip(), b_nivel):
             st.error(
-                "⛔ El titulo **'" + b_titulo.strip() + "'** ya existe en la base "
+                "â El titulo **'" + b_titulo.strip() + "'** ya existe en la base "
                 "con nivel **" + b_nivel + "**. "
                 "No se permite duplicar (mismo nombre + nivel). "
                 "Si la decision es diferente, desmarca 'Incorporar a la base'.")
@@ -178,13 +178,13 @@ elif pagina == "📋 Revision Back":
             for k in ("back_titulo","back_pre","ultimo_resultado"):
                 st.session_state.pop(k, None)
             decision_txt = "Aplica" if aplica_bool else "No aplica"
-            st.success("✅ Guardado: '" + b_titulo.strip() +
-                       "' → " + decision_txt + " · Nivel: " + b_nivel)
+            st.success("â Guardado: '" + b_titulo.strip() +
+                       "' â " + decision_txt + " Â· Nivel: " + b_nivel)
 
 
-# ─── PAG 3: CAGGAR DATOS ───────────────────────────────────────────────────────
-elif pagina == "📂 Cargar datos":
-    st.header("📂 Cargar base historica de titulos")
+# âââ PAG 3: CAGGAR DATOS âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+elif pagina == "ð Cargar datos":
+    st.header("ð Cargar base historica de titulos")
     st.info("Sube un CSV. Detecta duplicados por **nombre + nivel** "
             "sin importar universidad ni pais.")
     archivo = st.file_uploader("Selecciona tu archivo CSV",
@@ -192,7 +192,7 @@ elif pagina == "📂 Cargar datos":
     if archivo:
         try:
             df_nuevo = pd.read_csv(archivo)
-            st.markdown("**Vista previa** —" + str(len(df_nuevo)) + " filas:")
+            st.markdown("**Vista previa** â" + str(len(df_nuevo)) + " filas:")
             st.dataframe(df_nuevo.head(8), use_container_width=True,
                          hide_index=True)
             cols_req  = {"nombre_titulo","aplica","nivel"}
@@ -222,7 +222,7 @@ elif pagina == "📂 Cargar datos":
 
                 hay_dupes = len(dupes_int) > 0 or len(dupes_ext) > 0
                 if hay_dupes:
-                    st.warning("⚠️ Duplicados detectados (mismo nombre + nivel). "
+                    st.warning("â ï¸ Duplicados detectados (mismo nombre + nivel). "
                                "Elige como manejarlos.")
                     ca, cb = st.columns(2)
                     if len(dupes_int) > 0:
@@ -234,17 +234,17 @@ elif pagina == "📂 Cargar datos":
                         cb.dataframe(dupes_ext.reset_index(drop=True),
                                      use_container_width=True, hide_index=True)
                     opcion = st.radio(
-                        "¿Que hacer con los duplicados?",
-                        ["✅ Omitir (conservar existentes)",
-                         "🔄 Reemplazar (actualizar con nuevos)",
-                         "❌ Cancelar importacion"],
+                        "Â¿Que hacer con los duplicados?",
+                        ["â Omitir (conservar existentes)",
+                         "ð Reemplazar (actualizar con nuevos)",
+                         "â Cancelar importacion"],
                         index=0)
                 else:
-                    st.success("✅ Sin duplicados — " + str(len(df_nuevo)) +
+                    st.success("â Sin duplicados â " + str(len(df_nuevo)) +
                                " titulos listos.")
-                    opcion = "✅ Omitir (conservar existentes)"
+                    opcion = "â Omitir (conservar existentes)"
 
-                if st.button("✅ Confirmar e importar", use_container_width=True,
+                if st.button("â Confirmar e importar", use_container_width=True,
                              disabled="Cancelar" in opcion):
                     for col in ["universidad","pais","semestre"]:
                         if col not in df_nuevo.columns:
@@ -266,7 +266,7 @@ elif pagina == "📂 Cargar datos":
                     df_merged.to_csv(CSV_TITULOS, index=False)
                     get_motor.clear()
                     total_d = len(dupes_int) + len(dupes_ext)
-                    st.success("✅ Importacion completada. "
+                    st.success("â Importacion completada. "
                                "Duplicados manejados: " + str(total_d) + ". "
                                "Base: " + str(len(df_merged)) + " registros unicos.")
                     st.balloons()
@@ -283,19 +283,19 @@ elif pagina == "📂 Cargar datos":
          "pais":"Colombia","aplica":"","nivel":"bachillerato","semestre":1},
     ])
     st.download_button(
-        "⬇ Descargar plantilla CSV",
+        "â¬ Descargar plantilla CSV",
         data=plantilla.to_csv(index=False).encode("utf-8"),
         file_name="plantilla_titulos.csv", mime="text/csv",
         use_container_width=True)
 
 
-# ─── PAG 4: HISTORIAL ────────────────────────────────────────────────────────
-elif pagina == "📊 Historial":
-    st.header("📊 Historial de decisiones Back")
-    if not CSW_DECISIONES.exists():
+# âââ PAG 4: HISTORIAL ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+elif pagina == "ð Historial":
+    st.header("ð Historial de decisiones Back")
+    if not CSV_DECISIONES.exists():
         st.info("Aun no hay decisiones registradas.")
     else:
-        df = pd.read_csv(CSW_DECISIONES)
+        df = pd.read_csv(CSV_DECISIONES)
         if df.empty:
             st.info("El historial esta vacio.")
         else:
@@ -304,11 +304,11 @@ elif pagina == "📊 Historial":
                            .isin(["true","si","1"])).sum())
             c1, c2, c3 = st.columns(3)
             c1.metric("Total revisiones", total)
-            c2.metric("✅ Aprobadas",   aplican)
-            c3.metric("❌ Rechazadas", total - aplican)
+            c2.metric("â Aprobadas",   aplican)
+            c3.metric("â Rechazadas", total - aplican)
 
             st.markdown("---")
-            buscar = st.text_input("🔎 Buscar titulo", placeholder="Filtrar...")
+            buscar = st.text_input("ð Buscar titulo", placeholder="Filtrar...")
             _, mf2  = st.columns([2,1])
             filtro  = mf2.selectbox("Mostrar",
                                     ["Todas","Solo aprobadas","Solo rechazadas"])
@@ -339,14 +339,14 @@ elif pagina == "📊 Historial":
 
             d1, d2 = st.columns(2)
             d1.download_button(
-                "⬇ Descargar decisiones CSV",
+                "â¬ Descargar decisiones CSV",
                 data=df.to_csv(index=False).encode("utf-8"),
                 file_name="decisiones_back.csv", mime="text/csv",
                 use_container_width=True)
             if CSV_TITULOS.exists():
                 df_base_dl = pd.read_csv(CSV_TITULOS)
                 d2.download_button(
-                    "⬇ Descargar base completa CSV",
+                    "â¬ Descargar base completa CSV",
                     data=df_base_dl.to_csv(index=False).encode("utf-8"),
                     file_name="titulos_historicos.csv", mime="text/csv",
                     use_container_width=True)
