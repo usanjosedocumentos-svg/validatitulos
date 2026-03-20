@@ -6,6 +6,7 @@ Configura en Streamlit Secrets: GITHUB_TOKEN y GITHUB_REPO
 from pathlib import Path
 from datetime import datetime, timezone
 import base64, json, io, urllib.request, urllib.error
+import unicodedata
 import pandas as pd
 import streamlit as st
 from validador import ValidadorCSV, SEMESTRE_POR_NIVEL, CSV_DECISIONES, CSV_TITULOS
@@ -80,6 +81,19 @@ def registrar_consulta(titulo, resultado, nivel, confianza):
             "nivel": nivel or "", "confianza_pct": confianza}
     df = pd.concat([pd.read_csv(CSV_CONSULTAS), pd.DataFrame([fila])], ignore_index=True) if CSV_CONSULTAS.exists() else pd.DataFrame([fila])
     df.to_csv(CSV_CONSULTAS, index=False)
+
+def similar(a, b):
+    """Similitud entre dos strings - tolerante a ortografia y acentos."""
+    def norm(s):
+        s = unicodedata.normalize("NFD", str(s).lower().strip())
+        return "".join(c for c in s if unicodedata.category(c) != "Mn")
+    an = norm(a); bn = norm(b)
+    if an == bn: return 1.0
+    if an in bn or bn in an: return 0.85
+    wa = set(an.split()); wb = set(bn.split())
+    if not wa or not wb: return 0.0
+    comunes = wa & wb
+    return len(comunes) / max(len(wa), len(wb))
 
 def existe_duplicado(nombre, nivel):
     n, nv = nombre.strip().lower(), nivel.strip().lower()
@@ -168,29 +182,17 @@ if pagina == "Validar titulo":
 
     tab_consultar, tab_solicitar = st.tabs(["Consultar titulo", "Solicitar validacion al Back"])
 
-    # ---- PESTAÑA 1: CONSULTAR ----
+    # ---- PESTAÃA 1: CONSULTAR ----
     with tab_consultar:
         st.info("Ingresa el titulo y universidad para verificar si ya existe una decision del Back.")
         c1, c2 = st.columns(2)
-        busq_titulo = c1.text_input("Nombre del titulo", placeholder="Ej: Tecnólogo en Mercadotecnia", key="busq_t")
+        busq_titulo = c1.text_input("Nombre del titulo", placeholder="Ej: TecnÃ³logo en Mercadotecnia", key="busq_t")
         busq_univ   = c2.text_input("Universidad (opcional)", placeholder="Ej: Universidad de Santander", key="busq_u")
 
         if st.button("Consultar", use_container_width=True, key="btn_consultar"):
             if not busq_titulo.strip():
                 st.error("Ingresa el nombre del titulo.")
             else:
-                def similar(a, b):
-                    a = unicodedata.normalize("NFD", a.lower().strip())
-                    a = "".join(c for c in a if unicodedata.category(c) != "Mn")
-                    b = unicodedata.normalize("NFD", b.lower().strip())
-                    b = "".join(c for c in b if unicodedata.category(c) != "Mn")
-                    if a == b: return 1.0
-                    if a in b or b in a: return 0.85
-                    # Similitud por palabras comunes
-                    wa = set(a.split()); wb = set(b.split())
-                    if not wa or not wb: return 0.0
-                    comunes = wa & wb
-                    return len(comunes) / max(len(wa), len(wb))
 
                 resultado_encontrado = False
 
@@ -203,7 +205,7 @@ if pagina == "Validar titulo":
                         df_dec["_sim_u"] = df_dec["universidad"].astype(str).apply(lambda x: similar(x, busq_univ.strip())) if busq_univ.strip() else pd.Series([1.0]*len(df_dec))
                         # Umbral: titulo >70% similar
                         df_match = df_dec[(df_dec["_sim_t"] >= 0.70)].copy()
-                        # Si hay universidad, filtrar también por similitud de universidad >60%
+                        # Si hay universidad, filtrar tambiÃ©n por similitud de universidad >60%
                         if busq_univ.strip():
                             df_match = df_match[df_match["_sim_u"] >= 0.60]
                         df_match = df_match.sort_values("_sim_t", ascending=False)
@@ -249,9 +251,9 @@ if pagina == "Validar titulo":
                 if not resultado_encontrado:
                     st.info("No se encontro decision previa para este titulo. Ve a la pestana **Solicitar validacion al Back** para enviarlo.")
 
-    # ---- PESTAÑA 2: SOLICITAR ----
+    # ---- PESTAÃA 2: SOLICITAR ----
     with tab_solicitar:
-        st.warning("Usa esta pestana solo si la consulta en la pestana anterior no arrojó resultados.")
+        st.warning("Usa esta pestana solo si la consulta en la pestana anterior no arrojÃ³ resultados.")
         with st.form("form_validar", clear_on_submit=True):
             titulo      = st.text_input("Nombre del titulo *", placeholder="Ej: Administracion de Empresas")
             col1, col2  = st.columns(2)
