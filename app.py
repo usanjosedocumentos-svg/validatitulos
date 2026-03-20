@@ -10,9 +10,10 @@ from validador import ValidadorCSV, SEMESTRE_POR_NIVEL, CSV_DECISIONES, CSV_TITU
 st.set_page_config(page_title="ValidaTitulos", page_icon=":mortar_board:", layout="wide", initial_sidebar_state="expanded")
 
 CSV_CONSULTAS = Path("consultas_log.csv")
-CSV_PENDIENTES = Path("pendientes_back.csv")   # nuevo: solicitudes esperando decision del Back
 
-COLS_PENDIENTES = ["id","fecha","hora","nombre_titulo","universidad","pais","nivel_detectado","titular","texto_original","estado","revisor","decision","nivel_confirmado","motivo"]
+# Columnas de decisiones_back.csv - incluye estado para pendientes
+COLS_DEC = ["nombre_titulo","universidad","pais","nivel_confirmado","decision_aplica",
+            "revisor","motivo","fecha","estado","titular","texto_diploma"]
 
 @st.cache_resource
 def get_motor():
@@ -21,21 +22,40 @@ def get_motor():
 motor = get_motor()
 
 def registrar_consulta(titulo, resultado, nivel, confianza):
-    fila = {"fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d"), "hora": datetime.now(timezone.utc).strftime("%H:%M:%S"), "nombre_titulo": titulo.strip(), "resultado": resultado, "nivel": nivel or "", "confianza_pct": confianza}
+    fila = {"fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "hora":  datetime.now(timezone.utc).strftime("%H:%M:%S"),
+            "nombre_titulo": titulo.strip(), "resultado": resultado,
+            "nivel": nivel or "", "confianza_pct": confianza}
     df = pd.concat([pd.read_csv(CSV_CONSULTAS), pd.DataFrame([fila])], ignore_index=True) if CSV_CONSULTAS.exists() else pd.DataFrame([fila])
     df.to_csv(CSV_CONSULTAS, index=False)
 
-def guardar_pendiente(titulo, universidad, pais, nivel, titular, texto_original):
-    nuevo_id = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    fila = {"id": nuevo_id, "fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d"), "hora": datetime.now(timezone.utc).strftime("%H:%M:%S"), "nombre_titulo": titulo, "universidad": universidad, "pais": pais, "nivel_detectado": nivel, "titular": titular, "texto_original": texto_original[:300], "estado": "PENDIENTE", "revisor": "", "decision": "", "nivel_confirmado": "", "motivo": ""}
-    df = pd.concat([pd.read_csv(CSV_PENDIENTES), pd.DataFrame([fila])], ignore_index=True) if CSV_PENDIENTES.exists() else pd.DataFrame([fila])
-    df.to_csv(CSV_PENDIENTES, index=False)
-    return nuevo_id
+def guardar_pendiente(titulo, universidad, pais, nivel, titular, texto):
+    """Guarda en decisiones_back.csv con estado PENDIENTE"""
+    fila = {
+        "nombre_titulo": titulo, "universidad": universidad, "pais": pais,
+        "nivel_confirmado": nivel, "decision_aplica": "",
+        "revisor": "", "motivo": "",
+        "fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
+        "estado": "PENDIENTE", "titular": titular,
+        "texto_diploma": texto[:400]
+    }
+    if CSV_DECISIONES.exists():
+        df = pd.read_csv(CSV_DECISIONES)
+        # Agregar columnas nuevas si no existen
+        for col in ["estado","titular","texto_diploma"]:
+            if col not in df.columns:
+                df[col] = ""
+        df = pd.concat([df, pd.DataFrame([fila])], ignore_index=True)
+    else:
+        df = pd.DataFrame([fila])
+    df.to_csv(CSV_DECISIONES, index=False)
 
 def contar_pendientes():
-    if not CSV_PENDIENTES.exists():
+    if not CSV_DECISIONES.exists():
         return 0
-    df = pd.read_csv(CSV_PENDIENTES)
+    df = pd.read_csv(CSV_DECISIONES)
+    if "estado" not in df.columns:
+        return 0
     return int((df["estado"].astype(str).str.upper() == "PENDIENTE").sum())
 
 def existe_duplicado(nombre, nivel):
@@ -43,24 +63,31 @@ def existe_duplicado(nombre, nivel):
     nv = nivel.strip().lower()
     if CSV_TITULOS.exists():
         df = pd.read_csv(CSV_TITULOS)
-        if not df.empty and ((df["nombre_titulo"].astype(str).str.lower().str.strip() == n) & (df["nivel"].astype(str).str.lower().str.strip() == nv)).any():
+        if not df.empty and ((df["nombre_titulo"].astype(str).str.lower().str.strip() == n) &
+                             (df["nivel"].astype(str).str.lower().str.strip() == nv)).any():
             return True
     if CSV_DECISIONES.exists():
         df2 = pd.read_csv(CSV_DECISIONES)
-        if not df2.empty and "nivel_confirmado" in df2.columns and ((df2["nombre_titulo"].astype(str).str.lower().str.strip() == n) & (df2["nivel_confirmado"].astype(str).str.lower().str.strip() == nv)).any():
-            return True
+        if "estado" in df2.columns:
+            df2 = df2[df2["estado"].astype(str).str.upper() != "PENDIENTE"]
+        if not df2.empty and "nivel_confirmado" in df2.columns:
+            if ((df2["nombre_titulo"].astype(str).str.lower().str.strip() == n) &
+                (df2["nivel_confirmado"].astype(str).str.lower().str.strip() == nv)).any():
+                return True
     return False
 
 def extraer_datos_diploma(texto):
     lineas = [l.strip() for l in texto.strip().split("\n") if l.strip()]
     texto_lower = texto.lower()
     keywords_nivel = {
-        "doctorado":       ["doctorado","doctor en","phd","ph.d"],
-        "maestria":        ["maestria","master","magister","magister"],
+        "doctorado":       ["doctorado","doctor en","phd"],
+        "maestria":        ["maestria","master","magister"],
         "especializacion": ["especializacion","especialista en"],
-        "tecnologo":       ["tecnologo","tecnologia en","tecnologo"],
+        "tecnologo":       ["tecnologo","tecnologia en"],
         "bachillerato":    ["bachiller","bachillerato","tecnico en"],
-        "universitario":   ["ingeniero","ingeniera","administrador","licenciado","licenciada","arquitecto","contador","medico","abogado","psicologo","economista","biologo","quimico","fisico"]
+        "universitario":   ["ingeniero","ingeniera","administrador","licenciado",
+                            "licenciada","arquitecto","contador","medico","abogado",
+                            "psicologo","economista","biologo","quimico","fisico"]
     }
     nivel = "universitario"
     for nv, kws in keywords_nivel.items():
@@ -68,7 +95,8 @@ def extraer_datos_diploma(texto):
             nivel = nv
             break
     titulo = ""
-    triggers = ["titulo de","otorga el titulo","grado de","titulo academico","titulo profesional","carrera de","programa de","titulo en"]
+    triggers = ["titulo de","otorga el titulo","grado de","titulo academico",
+                "titulo profesional","carrera de","programa de","titulo en"]
     for i, linea in enumerate(lineas):
         if any(tw in linea.lower() for tw in triggers):
             if i + 1 < len(lineas):
@@ -84,18 +112,21 @@ def extraer_datos_diploma(texto):
                 break
     univ = ""
     for linea in lineas:
-        if any(kw in linea.lower() for kw in ["universidad","institucion universitaria","instituto","corporacion","fundacion universitaria","escuela","tecnologico","politecnico"]):
+        if any(kw in linea.lower() for kw in ["universidad","institucion universitaria",
+                "corporacion","fundacion universitaria","tecnologico","politecnico"]):
             univ = linea
             break
     pais = "Colombia"
-    for clave, valor in {"colombia":"Colombia","mexico":"Mexico","argentina":"Argentina","chile":"Chile","peru":"Peru","ecuador":"Ecuador","venezuela":"Venezuela","espana":"Espana","estados unidos":"Estados Unidos","bolivia":"Bolivia"}.items():
+    for clave, valor in {"colombia":"Colombia","mexico":"Mexico","argentina":"Argentina",
+                         "chile":"Chile","peru":"Peru","ecuador":"Ecuador",
+                         "venezuela":"Venezuela","espana":"Espana","estados unidos":"Estados Unidos",
+                         "bolivia":"Bolivia"}.items():
         if clave in texto_lower:
             pais = valor
             break
     titular = ""
-    titular_kws = ["otorga a","conferido a","se otorga a","concede a","a nombre de","otorgado a"]
     for i, linea in enumerate(lineas):
-        if any(tw in linea.lower() for tw in titular_kws):
+        if any(tw in linea.lower() for tw in ["otorga a","conferido a","se otorga a","a nombre de"]):
             if i + 1 < len(lineas):
                 titular = lineas[i + 1]
                 break
@@ -109,7 +140,6 @@ input[type="text"], textarea { cursor: text !important; }
 [data-testid="stSidebar"] { background: #0f1117; }
 [data-testid="stSidebar"] * { color: #e0e0e0 !important; }
 div[data-testid="stDataFrame"] td div { color: #111 !important; font-size:0.85rem !important; }
-.alerta-pendiente { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.8rem 1rem; border-radius: 6px; margin-bottom: 1rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -117,12 +147,9 @@ pendientes_count = contar_pendientes()
 
 with st.sidebar:
     st.markdown("<div style='padding:0.5rem 0 1.2rem'><div style='font-size:1.35rem;font-weight:700;color:#fff'>ValidaTitulos</div><div style='font-size:0.72rem;color:#888'>Sistema de uso interno</div></div>", unsafe_allow_html=True)
-
-    # Alerta visual en sidebar si hay pendientes
     if pendientes_count > 0:
         st.markdown("<div style='background:#f59e0b;color:#000;font-weight:700;border-radius:8px;padding:0.5rem 0.9rem;margin-bottom:8px;text-align:center'>PENDIENTES BACK: " + str(pendientes_count) + "</div>", unsafe_allow_html=True)
-
-    pagina = st.radio("Nav", ["Validar titulo", "Ingresar diploma", "Revision Back", "Cargar datos", "Historial", "Dashboard"], label_visibility="collapsed")
+    pagina = st.radio("Nav", ["Validar titulo","Ingresar diploma","Revision Back","Cargar datos","Historial","Dashboard"], label_visibility="collapsed")
     stats = motor.stats()
     st.markdown("<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:5px;display:flex;justify-content:space-between'><span style='color:#aaa;font-size:0.78rem'>Registros totales</span><span style='color:#fff;font-weight:700'>" + str(stats['total']) + "</span></div>", unsafe_allow_html=True)
     st.markdown("<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:5px;display:flex;justify-content:space-between'><span style='color:#aaa;font-size:0.78rem'>Aplican</span><span style='color:#4ade80;font-weight:700'>" + str(stats['aplican']) + "</span></div>", unsafe_allow_html=True)
@@ -172,127 +199,129 @@ if pagina == "Validar titulo":
 # PAG 2: INGRESAR DIPLOMA
 elif pagina == "Ingresar diploma":
     st.header("Ingresar diploma")
-
-    # Alerta si hay pendientes
     if pendientes_count > 0:
-        st.markdown("<div class='alerta-pendiente'><b>Aviso:</b> Hay <b>" + str(pendientes_count) + " diploma(s)</b> esperando decision del Back. Ve a <b>Revision Back</b> para aprobarlos.</div>", unsafe_allow_html=True)
-
-    st.info("Pega el texto del diploma. El sistema extrae los datos automaticamente y los envia al Back para su aprobacion.")
+        st.warning("Hay " + str(pendientes_count) + " diploma(s) pendientes esperando decision del Back.")
+    st.info("Pega el texto del diploma. El sistema extrae los datos y los envia al Back para aprobacion.")
 
     texto_diploma = st.text_area("Texto del diploma *", height=160,
-        placeholder="Pega aqui el texto completo del diploma...\nEj: UNIVERSIDAD NACIONAL - OTORGA EL TITULO DE INGENIERO DE SISTEMAS A JUAN PEREZ")
+        placeholder="Pega aqui el texto completo del diploma...\nEj: UNIVERSIDAD NACIONAL - OTORGA EL TITULO DE INGENIERO DE SISTEMAS A JUAN PEREZ GOMEZ")
 
     if texto_diploma.strip():
         titulo_d, univ_d, pais_d, nivel_d, titular_d = extraer_datos_diploma(texto_diploma)
-
         st.markdown("---")
-        st.subheader("Datos extraidos -- Revisa y corrige si es necesario")
-
+        st.subheader("Datos detectados -- Revisa y corrige si es necesario")
         col1, col2 = st.columns(2)
-        titulo_f    = col1.text_input("Nombre del titulo *", value=titulo_d, key="d_titulo")
-        univ_f      = col2.text_input("Universidad",         value=univ_d,   key="d_univ")
-        col3, col4  = st.columns(2)
+        titulo_f  = col1.text_input("Nombre del titulo *", value=titulo_d, key="d_titulo")
+        univ_f    = col2.text_input("Universidad",         value=univ_d,   key="d_univ")
+        col3, col4 = st.columns(2)
         idx_p = PAISES.index(pais_d) if pais_d in PAISES else 0
-        pais_f      = col3.selectbox("Pais",   PAISES,  index=idx_p, key="d_pais")
+        pais_f    = col3.selectbox("Pais",  PAISES,  index=idx_p, key="d_pais")
         idx_n = NIVELES.index(nivel_d) if nivel_d in NIVELES else 0
-        nivel_f     = col4.selectbox("Nivel",  NIVELES, index=idx_n, key="d_nivel")
-        titular_f   = st.text_input("Nombre del titular del diploma", value=titular_d, key="d_titular")
-
+        nivel_f   = col4.selectbox("Nivel", NIVELES, index=idx_n, key="d_nivel")
+        titular_f = st.text_input("Nombre del titular del diploma", value=titular_d, key="d_titular")
         st.markdown("---")
-
         if st.button("Enviar al Back para aprobacion", use_container_width=True, type="primary"):
             if not titulo_f.strip():
                 st.error("El campo Titulo es obligatorio.")
             else:
-                nuevo_id = guardar_pendiente(titulo_f.strip(), univ_f.strip(), pais_f, nivel_f, titular_f.strip(), texto_diploma)
-                st.success("Solicitud enviada al Back con ID: " + nuevo_id + ". El equipo Back recibira la alerta y aprobara la decision.")
-                st.session_state.pop("d_titulo", None)
+                guardar_pendiente(titulo_f.strip(), univ_f.strip(), pais_f, nivel_f, titular_f.strip(), texto_diploma)
+                st.success("Solicitud enviada al Back. El equipo vera la alerta y aprobara la decision.")
+                st.balloons()
                 st.rerun()
     else:
         st.markdown("""
-**Como funciona el flujo:**
-1. Pega el texto del diploma en el campo de arriba
+**Como funciona:**
+1. Pega el texto del diploma (copiado del documento)
 2. El sistema detecta titulo, universidad, pais, nivel y titular
-3. Corrige los datos si es necesario
-4. Haz clic en **Enviar al Back**
-5. El equipo Back ve la alerta, revisa y aprueba o rechaza
+3. Corrige si es necesario
+4. Clic en Enviar al Back
+5. El Back recibe la alerta y aprueba o rechaza
         """)
 
 
 # PAG 3: REVISION BACK
 elif pagina == "Revision Back":
     st.header("Revision manual -- equipo Back")
-
-    # --- ALERTA DE PENDIENTES ---
     if pendientes_count > 0:
-        st.markdown("<div class='alerta-pendiente'><b>ATENCION:</b> Tienes <b>" + str(pendientes_count) + " diploma(s) pendiente(s)</b> esperando tu decision. Revisalos en la pestana de abajo.</div>", unsafe_allow_html=True)
+        st.error("ATENCION: Tienes " + str(pendientes_count) + " diploma(s) PENDIENTE(S) esperando tu decision.")
 
-    tab_pendientes, tab_nueva, tab_editar = st.tabs(["PENDIENTES (" + str(pendientes_count) + ")", "Nueva decision", "Editar decision"])
+    tab_pendientes, tab_nueva, tab_editar = st.tabs(
+        ["PENDIENTES (" + str(pendientes_count) + ")", "Nueva decision", "Editar decision"])
 
     # ---- TAB PENDIENTES ----
     with tab_pendientes:
-        if not CSV_PENDIENTES.exists() or pendientes_count == 0:
+        if not CSV_DECISIONES.exists() or pendientes_count == 0:
             st.info("No hay diplomas pendientes de aprobacion.")
         else:
-            df_pend = pd.read_csv(CSV_PENDIENTES)
-            df_solo_pend = df_pend[df_pend["estado"].astype(str).str.upper() == "PENDIENTE"].reset_index(drop=True)
-            st.markdown("**" + str(len(df_solo_pend)) + " diploma(s) esperando tu decision:**")
-            for i, row in df_solo_pend.iterrows():
-                idx_real = df_pend[df_pend["id"].astype(str) == str(row["id"])].index[0]
-                with st.expander("PENDIENTE -- " + str(row.get("nombre_titulo","")) + " | " + str(row.get("fecha","")) + " " + str(row.get("hora",""))):
+            df_all = pd.read_csv(CSV_DECISIONES)
+            for col in ["estado","titular","texto_diploma"]:
+                if col not in df_all.columns:
+                    df_all[col] = ""
+            df_pend = df_all[df_all["estado"].astype(str).str.upper() == "PENDIENTE"].copy()
+            st.markdown("**" + str(len(df_pend)) + " diploma(s) esperando tu decision:**")
+            for idx_real in df_pend.index:
+                row = df_all.loc[idx_real]
+                titulo_pend = str(row.get("nombre_titulo",""))
+                fecha_pend  = str(row.get("fecha",""))
+                with st.expander("PENDIENTE -- " + titulo_pend + "  |  " + fecha_pend, expanded=True):
                     col_info, col_form = st.columns([1,1])
                     with col_info:
                         st.markdown("**Datos del diploma:**")
-                        st.write("Titulo: " + str(row.get("nombre_titulo","")))
+                        st.write("Titulo:      " + titulo_pend)
                         st.write("Universidad: " + str(row.get("universidad","")))
-                        st.write("Pais: " + str(row.get("pais","")))
-                        st.write("Nivel detectado: " + str(row.get("nivel_detectado","")))
-                        st.write("Titular: " + str(row.get("titular","")))
-                        if str(row.get("texto_original","")):
+                        st.write("Pais:        " + str(row.get("pais","")))
+                        st.write("Nivel:       " + str(row.get("nivel_confirmado","")))
+                        st.write("Titular:     " + str(row.get("titular","")))
+                        texto_orig = str(row.get("texto_diploma",""))
+                        if texto_orig:
                             st.markdown("**Texto original:**")
-                            st.caption(str(row.get("texto_original","")))
+                            st.caption(texto_orig[:300])
                     with col_form:
                         st.markdown("**Decision del Back:**")
-                        p_aplica  = st.radio("Aplica?", ["Si, aplica","No aplica"], key="p_aplica_"+str(row["id"]))
-                        nv_actual = str(row.get("nivel_detectado","universitario"))
-                        idx_nv = NIVELES.index(nv_actual) if nv_actual in NIVELES else 0
-                        p_nivel   = st.selectbox("Confirmar nivel", NIVELES, index=idx_nv, key="p_nivel_"+str(row["id"]))
-                        p_revisor = st.text_input("Tu nombre (revisor)", key="p_revisor_"+str(row["id"]), placeholder="Ej: Ana Gomez")
-                        p_motivo  = st.text_area("Observaciones", key="p_motivo_"+str(row["id"]), height=80, placeholder="Ej: Verificado. Aplica para programa X.")
-                        p_incorp  = st.checkbox("Incorporar a la base", value=True, key="p_incorp_"+str(row["id"]))
-
+                        key_suf = str(idx_real)
+                        p_aplica  = st.radio("Aplica?", ["Si, aplica","No aplica"], key="apl_"+key_suf)
+                        nv_act = str(row.get("nivel_confirmado","universitario"))
+                        idx_nv = NIVELES.index(nv_act) if nv_act in NIVELES else 0
+                        p_nivel   = st.selectbox("Confirmar nivel", NIVELES, index=idx_nv, key="niv_"+key_suf)
+                        p_revisor = st.text_input("Tu nombre (revisor)", key="rev_"+key_suf, placeholder="Ej: Ana Gomez")
+                        p_motivo  = st.text_area("Observaciones", key="mot_"+key_suf, height=80)
+                        p_incorp  = st.checkbox("Incorporar a la base", value=True, key="inc_"+key_suf)
                         ca, cr = st.columns(2)
-                        aprobar  = ca.button("Aprobar", key="aprobar_"+str(row["id"]),  use_container_width=True, type="primary")
-                        rechazar = cr.button("Rechazar", key="rechazar_"+str(row["id"]), use_container_width=True)
-
+                        aprobar  = ca.button("Aprobar",  key="ok_"+key_suf,  use_container_width=True, type="primary")
+                        rechazar = cr.button("Rechazar", key="no_"+key_suf,  use_container_width=True)
                         if aprobar or rechazar:
-                            aplica_bool = "Si" in p_aplica if aprobar else False
-                            df_pend.loc[idx_real, "estado"]          = "APROBADO" if aprobar else "RECHAZADO"
-                            df_pend.loc[idx_real, "revisor"]         = p_revisor.strip()
-                            df_pend.loc[idx_real, "decision"]        = "Aplica" if aplica_bool else "No aplica"
-                            df_pend.loc[idx_real, "nivel_confirmado"]= p_nivel
-                            df_pend.loc[idx_real, "motivo"]          = p_motivo.strip()
-                            df_pend.to_csv(CSV_PENDIENTES, index=False)
-                            # Guardar en decisiones_back.csv
-                            motor.guardar_decision(titulo=str(row["nombre_titulo"]), universidad=str(row.get("universidad","")), pais=str(row.get("pais","Colombia")), aplica=aplica_bool, nivel=p_nivel, revisor=p_revisor.strip(), motivo=p_motivo.strip(), incorporar=p_incorp)
+                            aplica_bool = ("Si" in p_aplica) and aprobar
+                            df_all.loc[idx_real, "estado"]           = "APROBADO" if aprobar else "RECHAZADO"
+                            df_all.loc[idx_real, "decision_aplica"]  = aplica_bool
+                            df_all.loc[idx_real, "nivel_confirmado"] = p_nivel
+                            df_all.loc[idx_real, "revisor"]          = p_revisor.strip()
+                            df_all.loc[idx_real, "motivo"]           = p_motivo.strip()
+                            df_all.to_csv(CSV_DECISIONES, index=False)
+                            if p_incorp and aplica_bool:
+                                motor.guardar_decision(
+                                    titulo=titulo_pend,
+                                    universidad=str(row.get("universidad","")),
+                                    pais=str(row.get("pais","Colombia")),
+                                    aplica=aplica_bool, nivel=p_nivel,
+                                    revisor=p_revisor.strip(), motivo=p_motivo.strip(),
+                                    incorporar=False)
                             get_motor.clear()
-                            estado_txt = "APROBADO" if aprobar else "RECHAZADO"
-                            st.success("Diploma " + estado_txt + " correctamente.")
+                            st.success("Diploma " + ("APROBADO" if aprobar else "RECHAZADO") + " correctamente.")
                             st.rerun()
 
     # ---- TAB NUEVA DECISION ----
     with tab_nueva:
-        st.warning("Solo para el equipo Back. Cada decision guardada mejora el sistema.")
+        st.warning("Solo para el equipo Back.")
         prefill = st.session_state.get("back_titulo", "")
         ult = st.session_state.get("ultimo_resultado", {})
         with st.form("form_back", clear_on_submit=True):
             b_titulo  = st.text_input("Titulo revisado *", value=prefill, placeholder="Nombre exacto del titulo")
             bc1, bc2  = st.columns(2)
             b_univ    = bc1.text_input("Universidad", value=ult.get("universidad",""))
-            idx_pais  = (PAISES_B.index(ult.get("pais","Colombia")) if ult.get("pais","Colombia") in PAISES_B else 0)
-            b_pais    = bc2.selectbox("Pais", PAISES_B, index=idx_pais)
+            idx_p = (PAISES_B.index(ult.get("pais","Colombia")) if ult.get("pais","Colombia") in PAISES_B else 0)
+            b_pais    = bc2.selectbox("Pais", PAISES_B, index=idx_p)
             bd1, bd2  = st.columns(2)
-            b_aplica  = bd1.radio("Este titulo aplica?", ["Si, aplica", "No aplica"])
+            b_aplica  = bd1.radio("Este titulo aplica?", ["Si, aplica","No aplica"])
             b_nivel   = bd2.selectbox("Nivel academico confirmado", NIVELES)
             b_revisor = st.text_input("Nombre del revisor", placeholder="Ej: Ana Gomez")
             b_motivo  = st.text_area("Observaciones", height=80)
@@ -313,17 +342,20 @@ elif pagina == "Revision Back":
 
     # ---- TAB EDITAR ----
     with tab_editar:
-        st.info("Busca un registro ya guardado para corregir cualquier campo.")
         if not CSV_DECISIONES.exists():
             st.warning("Aun no hay decisiones registradas.")
         else:
             df_dec = pd.read_csv(CSV_DECISIONES)
-            if df_dec.empty:
-                st.warning("El historial esta vacio.")
+            if "estado" in df_dec.columns:
+                df_dec_edit = df_dec[df_dec["estado"].astype(str).str.upper() != "PENDIENTE"]
+            else:
+                df_dec_edit = df_dec
+            if df_dec_edit.empty:
+                st.info("No hay decisiones aprobadas para editar.")
             else:
                 buscar_edit = st.text_input("Buscar titulo", placeholder="Escribe parte del nombre...", key="buscar_editar")
                 if buscar_edit.strip():
-                    df_f2 = df_dec[df_dec["nombre_titulo"].astype(str).str.contains(buscar_edit.strip(), case=False, na=False)]
+                    df_f2 = df_dec_edit[df_dec_edit["nombre_titulo"].astype(str).str.contains(buscar_edit.strip(), case=False, na=False)]
                     if df_f2.empty:
                         st.warning("No se encontraron registros.")
                     else:
@@ -389,7 +421,7 @@ elif pagina == "Cargar datos":
                     dupes_ext = df_nuevo[df_nuevo["_key"].isin(df_base["_key"])][["nombre_titulo","nivel"]].drop_duplicates()
                 hay_dupes = len(dupes_int) > 0 or len(dupes_ext) > 0
                 if hay_dupes:
-                    st.warning("Duplicados detectados. Elige como manejarlos.")
+                    st.warning("Duplicados detectados.")
                     ca, cb = st.columns(2)
                     if len(dupes_int) > 0:
                         ca.markdown("**En el archivo (" + str(len(dupes_int)) + "):**")
@@ -397,7 +429,7 @@ elif pagina == "Cargar datos":
                     if len(dupes_ext) > 0:
                         cb.markdown("**Ya en la base (" + str(len(dupes_ext)) + "):**")
                         cb.dataframe(dupes_ext.reset_index(drop=True), use_container_width=True, hide_index=True)
-                    opcion = st.radio("Que hacer?", ["Omitir (conservar existentes)", "Reemplazar (actualizar con nuevos)", "Cancelar importacion"], index=0)
+                    opcion = st.radio("Que hacer?", ["Omitir (conservar existentes)","Reemplazar (actualizar con nuevos)","Cancelar importacion"], index=0)
                 else:
                     st.success("Sin duplicados -- " + str(len(df_nuevo)) + " titulos listos.")
                     opcion = "Omitir (conservar existentes)"
@@ -417,7 +449,7 @@ elif pagina == "Cargar datos":
                     st.success("Importacion completada. Base: " + str(len(df_merged)) + " registros unicos.")
                     st.balloons()
         except Exception as e:
-            st.error("Error al leer el archivo: " + str(e))
+            st.error("Error: " + str(e))
     st.markdown("---")
     plantilla = pd.DataFrame([{"nombre_titulo":"Administracion de Empresas","universidad":"Universidad Nacional","pais":"Colombia","aplica":"","nivel":"universitario","semestre":5}])
     st.download_button("Descargar plantilla CSV", data=plantilla.to_csv(index=False).encode("utf-8"), file_name="plantilla_titulos.csv", mime="text/csv", use_container_width=True)
@@ -430,11 +462,15 @@ elif pagina == "Historial":
         st.info("Aun no hay decisiones registradas.")
     else:
         df = pd.read_csv(CSV_DECISIONES)
-        if df.empty:
+        if "estado" in df.columns:
+            df_hist = df[df["estado"].astype(str).str.upper() != "PENDIENTE"]
+        else:
+            df_hist = df
+        if df_hist.empty:
             st.info("El historial esta vacio.")
         else:
-            total = len(df)
-            aplican = int((df["decision_aplica"].astype(str).str.lower().isin(["true","si","1"])).sum())
+            total = len(df_hist)
+            aplican = int((df_hist["decision_aplica"].astype(str).str.lower().isin(["true","si","1"])).sum())
             c1, c2, c3 = st.columns(3)
             c1.metric("Total revisiones", total)
             c2.metric("Aprobadas", aplican)
@@ -443,7 +479,7 @@ elif pagina == "Historial":
             buscar = st.text_input("Buscar titulo", placeholder="Filtrar...")
             _, mf2 = st.columns([2,1])
             filtro = mf2.selectbox("Mostrar", ["Todas","Solo aprobadas","Solo rechazadas"])
-            df_show = df.copy()
+            df_show = df_hist.copy()
             if buscar:
                 df_show = df_show[df_show["nombre_titulo"].astype(str).str.contains(buscar, case=False, na=False)]
             if filtro == "Solo aprobadas":
@@ -452,7 +488,7 @@ elif pagina == "Historial":
                 df_show = df_show[~df_show["decision_aplica"].astype(str).str.lower().isin(["true","si","1"])]
             st.dataframe(df_show.style.set_properties(**{"color":"black","font-size":"14px"}), use_container_width=True, hide_index=True, height=400)
             d1, d2 = st.columns(2)
-            d1.download_button("Descargar decisiones CSV", data=df.to_csv(index=False).encode("utf-8"), file_name="decisiones_back.csv", mime="text/csv", use_container_width=True)
+            d1.download_button("Descargar decisiones CSV", data=df_hist.to_csv(index=False).encode("utf-8"), file_name="decisiones_back.csv", mime="text/csv", use_container_width=True)
             if CSV_TITULOS.exists():
                 d2.download_button("Descargar base completa CSV", data=pd.read_csv(CSV_TITULOS).to_csv(index=False).encode("utf-8"), file_name="titulos_historicos.csv", mime="text/csv", use_container_width=True)
 
