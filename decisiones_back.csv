@@ -1,28 +1,28 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
 TECNOLOGO EN MERCADOTECNIA Y PUBLICIDAD,UNIVERSIDAD DE SANTANDER,Colombia,tecnologo,True,,solo para administracion de empresas,2026-03-20,True,
-TECNÂLOGO EN MERCADOTECNIA Y PUBLICIDAD,UNIVERSIDAD DE SANTANDER,Colombia,tecnologo,True,Cristian Felipe Talero Linares,Aplica solo para administracion,2026-03-20,True,
-TÂCNICO LABORAL POR COMPETENCIAS EN AUXILIAR ADMINISTRATIVO,CENTRO EDUCATIVO NACIONAL CENAL,Colombia,bachillerato,True,Cristian Felipe Talero Linares,administracion de empresas,2026-03-20,True,
-TECNOLOGO EN CONTROL AMBIENTAL,SENA,Colombia,tecnologo,True,Leidy Julieth GarcÃ­a Fajardo,Si aplica ING INDUSTRIAL,2026-03-20,True,3.0
-TECNOLOGO EN GESTION LOGISTICA,SENA,Colombia,tecnologo,True,Leidy Julieth GarcÃ­a Fajardo,si aplica ING INDUSTRIAL,2026-03-20,True,3.0
-TECNICO EN CONTABILIZACION DE OPERACIONES COMERCIALES Y FINANCIERAS,SENA,Colombia,tecnico,True,,Aplica para Tg en GestiÃ³n Contable y Tributaria,2026-03-21,True,2.0
-TECNOLOGA EN PROMOCION DE LA SALUD,LA UNIVERSIDAD DE NARIÃO,Colombia,tecnologo,True,,Solo para ing industrial - CT,2026-03-21,True,3.0
-TECNICO LABORAL EN ADMINISTRACIÃN FINANCIERA Y AUDITORIA,INSTITUTO POLITECNICO,Colombia,tecnico,True,,Aplica para administracion y contaduria - CT,2026-03-21,True,2.0
-TECNICO LABORALEN AUXILIAR EN ENFERMERIA,ESCUELA POLITECNICA CIFORTED,Colombia,tecnico,True,,solo para ing industrial,2026-03-21,True,2.0
+TECNLOGO EN MERCADOTECNIA Y PUBLICIDAD,UNIVERSIDAD DE SANTANDER,Colombia,tecnologo,True,Cristian Felipe Talero Linares,Aplica solo para administracion,2026-03-20,True,
+TCNICO LABORAL POR COMPETENCIAS EN AUXILIAR ADMINISTRATIVO,CENTRO EDUCATIVO NACIONAL CENAL,Colombia,bachillerato,True,Cristian Felipe Talero Linares,administracion de empresas,2026-03-20,True,
+TECNOLOGO EN CONTROL AMBIENTAL,SENA,Colombia,tecnologo,True,Leidy Julieth Garc­a Fajardo,Si aplica ING INDUSTRIAL,2026-03-20,True,3.0
+TECNOLOGO EN GESTION LOGISTICA,SENA,Colombia,tecnologo,True,Leidy Julieth Garc­a Fajardo,si aplica ING INDUSTRIAL,2026-03-20,True,3.0
+TECNICO EN CONTABILIZACION DE OPERACIONES COMERCIALES Y FINANCIERAS,SENA,Colombia,tecnico,True,,Aplica para Tg en Gesti³n Contable y Tributaria,2026-03-21,True,2.0
+TECNOLOGO EN PROMOCION DE LA SALUD,LA UNIVERSIDAD DE NARIO,Colombia,tecnologo,True,,Solo para ing industrial - CT,2026-03-21,True,3.0
+TECNICO LABORAL EN ADMINISTRACIN FINANCIERA Y AUDITORIA,INSTITUTO POLITECNICO,Colombia,tecnico,True,,Aplica para administracion y contaduria - CT,2026-03-21,True,2.0
+TECNICO LABORAL EN AUXILIAR EN ENFERMERIA,ESCUELA POLITECNICA CIFORTED,Colombia,tecnico,True,,solo para ing industrial,2026-03-21,True,2.0
 AUXILIAR EN SERVICIO FARMACEUTICOS,SINFRONTERAS,Colombia,tecnico,True,,Solo para Ing industrial - CT,2026-03-21,True,2.0
 TECNICO EN MANTENIMIENTO DE MOTORES DISEL,SENA,Colombia,tecnico,False,,Ingresa desde bachiller - CT,2026-03-21,True,2.0
-"GESTION INTEGRADA DE LA CALIDAD,  MEDIO AMBIENTE, SEGURIDAD Y SALUD OCUPACIONAL",SENA,Colombia,tecnologo,True,CT,aplica para ing industrial,2026-03-21,True,3.0
-PRODCCION DE PETROLEO Y GAS,SENA,Colombia,tecnico,False,CT,ingresa desde bachiller,2026-03-21,True,2.0
+GESTION INTEGRADA DE LA CALIDAD MEDIO AMBIENTE,SENA,Colombia,tecnologo,False,True,No aplica,SENA,true,
+PRODUCCION DE PETROLEO Y GAS,SENA,Colombia,tecnico,False,CT,ingresa desde bachiller,2026-03-21,True,2.0
 TECNICO ASISTENCIA ADMINISTRATIVA,SENA,Colombia,tecnico,True,CT,Aplica para administracion de empresas,2026-03-21,True,2.0
 TECNICO LABORAL POR COMPETENCIAS EN ELECTRONICA,INSTITUTO COLOMBIANO DE APRENDIZ INCAP,Colombia,tecnico,False,CT,Ingresa desde bachiller,2026-03-21,True,2.0
 TECNOLOGO GESTION DEL TALENTO HUMANO,SENA,Colombia,tecnologo,True,CT,Aplica para ing industrial y administracion,2026-03-21,True,3.0
 TECNICO LABORAL EN AUXILIAR SOCIAL Y COMUNITARIO,CENTRO EDUCATIVO SAN PABLO CESP,Colombia,tecnico,False,CT,Ingresa desde bachiller,2026-03-21,True,2.0
 OPERACIONES MINERAS,CENTRO EDUCATIVO DE SISTEMAS,Colombia,tecnico,False,CT,Ingresa desde bachiller,2026-03-21,True,2.0
 TECNICO LABORAL POR COMPETENCIAS AUXILIAR ADMINISTRATIVO,CENFOCAT,Colombia,tecnico,True,CT,Aplica para administracion,2026-03-21,True,2.0
-TECNOLOGO  EN INGENIERIA DE SISTEMAS,CENTRO COLOMBIANO  DE ESTUDIOS PROFESIONALES,Colombia,tecnologo,True,CT,Aplica para ing de sistemas,2026-03-21,True,3.0
+TECNOLOGO EN INGENIERIA DE SISTEMAS,CENTRO COLOMBIANO DE ESTUDIOS PROFESIONALES,Colombia,tecnologo,True,CT,Aplica para ing de sistemas,2026-03-21,True,3.0
 TECNOLOGO GESTION ADMINISTRATIVA,SENA,Colombia,tecnologo,True,CT,Aplica para administracion,2026-03-21,True,3.0
 TECNOLOGO EN RADIOLOGIA E IMAGENES DIAGNOSTICAS,CORSALUD,Colombia,tecnologo,False,CT,Ingresa desde bachiller,2026-03-21,True,3.0
-TECNICO PROFESIONAL  EN PROCESOS ADMINISTRATIVOS,CUN,Colombia,tecnico,True,CT,Aplica para administracion,2026-03-21,True,2.0
-TECNOLOGO EN SUPERVISION DE LA FABRICACION DE PRODUCTOS METALICOS  SOLDADOS,SENA,Colombia,tecnologo,False,CT,Ingresa desde bachiller,2026-03-21,True,3.0
+TECNICO PROFESIONAL EN PROCESOS ADMINISTRATIVOS,CUN,Colombia,tecnico,True,CT,Aplica para administracion,2026-03-21,True,2.0
+TECNOLOGO EN SUPERVISION DE LA FABRICACION DE PRODUCTOS METALICOS SOLDADOS,SENA,Colombia,tecnologo,False,CT,Ingresa desde bachiller,2026-03-21,True,3.0
 TECNICO LABORAL POR COMPETENCIAS PRODUCCION DE PETROLEO Y GAS,CENFOTEC S.A.S,Colombia,tecnico,False,,Ingresa desde bachiller,2026-03-21,True,2.0
 REPUBLICA DE COLOMBIA EJERCITO NACIONAL CENTRO DE EDUCACION MILITAR,TECNOLOGO EN GESTION LOGICA CON ENFASIS EN ALMACENES,Colombia,tecnologo,False,CT,Ingresa desde bachiller,2026-03-21,True,3.0
 AUXILIAR EN SEGURIDAD Y SALUD EN EL TRABAJO,CEDENORTE,Colombia,tecnico,True,CT,Aplica para ing indsutrial,2026-03-21,True,2.0
@@ -30,5 +30,3 @@ TECNOLOGO EN CONSTRUCCION,SENA,Colombia,tecnologo,False,CT,Ingresa desde bachill
 TECNICO PROFESIONAL EN OFIMATICA,SENA,Colombia,tecnico,True,CT,Aplica para ing de sistemas,2026-03-21,True,2.0
 TECNOLOGO EN ENTRENAMIENTO Y GESTION MILITAR,ESCUELA DE FORMACION DE INFANTERIA DE MARINA,Colombia,tecnologo,False,CT,Ingresa desde bachiller,2026-03-21,True,3.0
 TECNOLOGO EN REGENCIA DE FARMACIA,LA UNIVERSIDAD NACIONAL ABIERTA Y A DISTANCIA UNAD,Colombia,tecnologo,True,CT,Aplica para ing industrial,2026-03-21,true,3.0
-TECNLOGO EN MERCADOTECNIA Y PUBLICIDAD,,Colombia,tecnologo,True,Cristian Felipe Talero Linares,,2026-03-20,true,
-TCNICO LABORAL POR COMPETENCIAS EN AUXILIAR ADMINISTRATIVO,,Colombia,bachillerato,True,Cristian Felipe Talero Linares,,2026-03-20,true,
