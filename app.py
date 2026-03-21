@@ -223,9 +223,11 @@ with st.sidebar:
     elif pendientes_count > 0:
         st.markdown("<div style='background:#f59e0b;color:#000;font-weight:700;border-radius:8px;padding:0.5rem 0.9rem;margin-bottom:8px;text-align:center'>PENDIENTES BACK: " + str(pendientes_count) + "</div>", unsafe_allow_html=True)
     pagina = st.radio("Nav", ["Validar titulo","Ingresar diploma","Revision Back","Cargar datos","Historial","Dashboard"], label_visibility="collapsed")
-    stats = motor.stats()
-    st.markdown("<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:5px;display:flex;justify-content:space-between'><span style='color:#aaa;font-size:0.78rem'>Registros totales</span><span style='color:#fff;font-weight:700'>" + str(stats['total']) + "</span></div>", unsafe_allow_html=True)
-    st.markdown("<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:5px;display:flex;justify-content:space-between'><span style='color:#aaa;font-size:0.78rem'>Aplican</span><span style='color:#4ade80;font-weight:700'>" + str(stats['aplican']) + "</span></div>", unsafe_allow_html=True)
+    _df_dec_side, _ = gh_get_decisiones()
+    _total_side  = len(_df_dec_side)
+    _aplican_side = int((_df_dec_side["decision_aplica"].astype(str).str.lower().isin(["true","1","si"])).sum()) if not _df_dec_side.empty and "decision_aplica" in _df_dec_side.columns else 0
+    st.markdown("<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:5px;display:flex;justify-content:space-between'><span style='color:#aaa;font-size:0.78rem'>Registros totales</span><span style='color:#fff;font-weight:700'>" + str(_total_side) + "</span></div>", unsafe_allow_html=True)
+    st.markdown("<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:5px;display:flex;justify-content:space-between'><span style='color:#aaa;font-size:0.78rem'>Aplican</span><span style='color:#4ade80;font-weight:700'>" + str(_aplican_side) + "</span></div>", unsafe_allow_html=True)
     if CSV_CONSULTAS.exists():
         st.markdown("<div style='background:#1a1d2e;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:5px;display:flex;justify-content:space-between'><span style='color:#aaa;font-size:0.78rem'>Consultas totales</span><span style='color:#60a5fa;font-weight:700'>" + str(len(pd.read_csv(CSV_CONSULTAS))) + "</span></div>", unsafe_allow_html=True)
     if st.button("Recargar base", use_container_width=True):
@@ -243,11 +245,11 @@ if pagina == "Validar titulo":
 
     tab_consultar, tab_solicitar = st.tabs(["Consultar titulo", "Solicitar validacion al Back"])
 
-    # ---- PESTAÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂA 1: CONSULTAR ----
+    # ---- PESTAÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂA 1: CONSULTAR ----
     with tab_consultar:
         st.info("Ingresa el titulo y universidad para verificar si ya existe una decision del Back.")
         c1, c2 = st.columns(2)
-        busq_titulo = c1.text_input("Nombre del titulo", placeholder="Ej: TecnÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³logo en Mercadotecnia", key="busq_t")
+        busq_titulo = c1.text_input("Nombre del titulo", placeholder="Ej: TecnÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³logo en Mercadotecnia", key="busq_t")
         busq_univ   = c2.text_input("Universidad (opcional)", placeholder="Ej: Universidad de Santander", key="busq_u")
 
         if st.button("Consultar", use_container_width=True, key="btn_consultar"):
@@ -266,7 +268,7 @@ if pagina == "Validar titulo":
                         df_dec["_sim_u"] = df_dec["universidad"].astype(str).apply(lambda x: similar(x, busq_univ.strip())) if busq_univ.strip() else pd.Series([1.0]*len(df_dec))
                         # Umbral: titulo >70% similar
                         df_match = df_dec[(df_dec["_sim_t"] >= 0.70)].copy()
-                        # Si hay universidad, filtrar tambiÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ©n por similitud de universidad >60%
+                        # Si hay universidad, filtrar tambiÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ©n por similitud de universidad >60%
                         if busq_univ.strip():
                             df_match = df_match[df_match["_sim_u"] >= 0.60]
                         df_match = df_match.sort_values("_sim_t", ascending=False)
@@ -312,9 +314,9 @@ if pagina == "Validar titulo":
                 if not resultado_encontrado:
                     st.info("No se encontro decision previa para este titulo. Ve a la pestana **Solicitar validacion al Back** para enviarlo.")
 
-    # ---- PESTAÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂA 2: SOLICITAR ----
+    # ---- PESTAÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂA 2: SOLICITAR ----
     with tab_solicitar:
-        st.warning("Usa esta pestana solo si la consulta en la pestana anterior no arrojÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ resultados.")
+        st.warning("Usa esta pestana solo si la consulta en la pestana anterior no arrojÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ resultados.")
         with st.form("form_validar", clear_on_submit=True):
             titulo      = st.text_input("Nombre del titulo *", placeholder="Ej: Administracion de Empresas")
             col1, col2  = st.columns(2)
