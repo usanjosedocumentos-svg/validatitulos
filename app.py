@@ -16,6 +16,25 @@ PAISES   = ["Colombia","Mexico","Argentina","Chile","Peru","Ecuador","Venezuela"
 PAISES_B = ["Colombia","Mexico","Argentina","Chile","Peru","Ecuador","Venezuela","Espana","Otro"]
 NIVELES  = ["universitario","maestria","especializacion","doctorado","tecnologo","tecnico","bachillerato"]
 
+# Diccionario de palabras truncadas por encoding roto
+_FIX_WORDS = {
+    'TCNICO':'TECNICO','TCNICA':'TECNICA','TECNLOGO':'TECNOLOGO','TECNLOGA':'TECNOLOGO',
+    'ADMINISTRACIN':'ADMINISTRACION','ESPAOL':'ESPANOL','PRODUCCIN':'PRODUCCION',
+    'GESTINDE':'GESTION DE','INTEGRADADE':'INTEGRADA DE','LICENCIACIN':'LICENCIACION',
+}
+
+def clean_text(s):
+    """Elimina caracteres no-ASCII y corrige palabras truncadas por encoding roto."""
+    if not s: return ''
+    # Eliminar chars no imprimibles y no-ASCII
+    import re as _re
+    r = _re.sub(r'[^\x20-\x7E]', '', str(s))
+    r = _re.sub(r'\s+', ' ', r).strip().strip('"').strip("'")
+    # Corregir palabras truncadas
+    words = r.split()
+    words = [_FIX_WORDS.get(w.upper(), w) for w in words]
+    return ' '.join(words)
+
 def get_gh_config():
     try:
         return st.secrets["GITHUB_TOKEN"], st.secrets.get("GITHUB_REPO","usanjosedocumentos-svg/validatitulos")
@@ -70,6 +89,10 @@ def contar_pendientes():
 
 def guardar_decision(titulo, universidad, pais, nivel, aplica, revisor, motivo, incorporar=True):
     df, sha = leer_decisiones()
+    titulo     = clean_text(titulo)
+    universidad = clean_text(universidad)
+    motivo      = clean_text(motivo)
+    revisor     = clean_text(revisor)
     nueva = pd.DataFrame([{"nombre_titulo":titulo,"universidad":universidad,"pais":pais,"nivel_confirmado":nivel,"decision_aplica":str(aplica),"revisor":revisor,"motivo":motivo,"fecha":datetime.now(timezone.utc).strftime("%Y-%m-%d"),"incorporar":str(incorporar).lower(),"semestre":SEMESTRE_POR_NIVEL.get(nivel,"")}])
     df = pd.concat([df, nueva], ignore_index=True)
     ok, err = _gh_write("decisiones_back.csv", df, sha, "Add decision: "+titulo[:50])
@@ -78,6 +101,8 @@ def guardar_decision(titulo, universidad, pais, nivel, aplica, revisor, motivo, 
 
 def guardar_pendiente(titulo, universidad, pais, nivel, titular, texto):
     df, sha = leer_pendientes()
+    titulo     = clean_text(titulo)
+    universidad = clean_text(universidad)
     nid = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     nueva = pd.DataFrame([{"id":nid,"fecha":datetime.now(timezone.utc).strftime("%Y-%m-%d"),"hora":datetime.now(timezone.utc).strftime("%H:%M:%S"),"nombre_titulo":titulo,"universidad":universidad,"pais":pais,"nivel_detectado":nivel,"titular":titular,"texto_diploma":texto[:400] if texto else "","estado":"PENDIENTE","revisor":"","decision":"","nivel_confirmado":"","motivo":""}])
     df = pd.concat([df, nueva], ignore_index=True)
