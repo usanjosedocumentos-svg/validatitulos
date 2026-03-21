@@ -138,17 +138,23 @@ def registrar_consulta(titulo, resultado, nivel, confianza):
     df.to_csv(CSV_CONSULTAS, index=False)
 
 def similar(a, b):
-    """Similitud entre dos strings - tolerante a ortografia y acentos."""
+    """Similitud robusta: ignora acentos, comas, mayusculas, espacios extra."""
+    import re as _re
     def norm(s):
         s = unicodedata.normalize("NFD", str(s).lower().strip())
-        return "".join(c for c in s if unicodedata.category(c) != "Mn")
+        s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+        s = _re.sub(r"[^a-z0-9\s]", " ", s)
+        return _re.sub(r"\s+", " ", s).strip()
     an = norm(a); bn = norm(b)
     if an == bn: return 1.0
-    if an in bn or bn in an: return 0.85
-    wa = set(an.split()); wb = set(bn.split())
+    if an in bn or bn in an: return 0.9
+    wa = [w for w in an.split() if len(w) > 2]
+    wb = [w for w in bn.split() if len(w) > 2]
     if not wa or not wb: return 0.0
-    comunes = wa & wb
-    return len(comunes) / max(len(wa), len(wb))
+    set_b = set(wb)
+    comunes = sum(1 for w in wa if w in set_b)
+    return comunes / max(len(wa), len(wb))
+
 
 def existe_duplicado(nombre, nivel):
     n, nv = nombre.strip().lower(), nivel.strip().lower()
@@ -237,11 +243,11 @@ if pagina == "Validar titulo":
 
     tab_consultar, tab_solicitar = st.tabs(["Consultar titulo", "Solicitar validacion al Back"])
 
-    # ---- PESTAÃÂÃÂÃÂÃÂA 1: CONSULTAR ----
+    # ---- PESTAÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂA 1: CONSULTAR ----
     with tab_consultar:
         st.info("Ingresa el titulo y universidad para verificar si ya existe una decision del Back.")
         c1, c2 = st.columns(2)
-        busq_titulo = c1.text_input("Nombre del titulo", placeholder="Ej: TecnÃÂÃÂÃÂÃÂ³logo en Mercadotecnia", key="busq_t")
+        busq_titulo = c1.text_input("Nombre del titulo", placeholder="Ej: TecnÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³logo en Mercadotecnia", key="busq_t")
         busq_univ   = c2.text_input("Universidad (opcional)", placeholder="Ej: Universidad de Santander", key="busq_u")
 
         if st.button("Consultar", use_container_width=True, key="btn_consultar"):
@@ -260,7 +266,7 @@ if pagina == "Validar titulo":
                         df_dec["_sim_u"] = df_dec["universidad"].astype(str).apply(lambda x: similar(x, busq_univ.strip())) if busq_univ.strip() else pd.Series([1.0]*len(df_dec))
                         # Umbral: titulo >70% similar
                         df_match = df_dec[(df_dec["_sim_t"] >= 0.70)].copy()
-                        # Si hay universidad, filtrar tambiÃÂÃÂÃÂÃÂ©n por similitud de universidad >60%
+                        # Si hay universidad, filtrar tambiÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ©n por similitud de universidad >60%
                         if busq_univ.strip():
                             df_match = df_match[df_match["_sim_u"] >= 0.60]
                         df_match = df_match.sort_values("_sim_t", ascending=False)
@@ -306,9 +312,9 @@ if pagina == "Validar titulo":
                 if not resultado_encontrado:
                     st.info("No se encontro decision previa para este titulo. Ve a la pestana **Solicitar validacion al Back** para enviarlo.")
 
-    # ---- PESTAÃÂÃÂÃÂÃÂA 2: SOLICITAR ----
+    # ---- PESTAÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂA 2: SOLICITAR ----
     with tab_solicitar:
-        st.warning("Usa esta pestana solo si la consulta en la pestana anterior no arrojÃÂÃÂÃÂÃÂ³ resultados.")
+        st.warning("Usa esta pestana solo si la consulta en la pestana anterior no arrojÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ resultados.")
         with st.form("form_validar", clear_on_submit=True):
             titulo      = st.text_input("Nombre del titulo *", placeholder="Ej: Administracion de Empresas")
             col1, col2  = st.columns(2)
