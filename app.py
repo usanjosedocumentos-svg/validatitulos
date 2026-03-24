@@ -213,7 +213,8 @@ div[data-testid="stDataFrame"] td div{color:#111!important;font-size:.85rem!impo
 
 pendientes_n = contar_pendientes()
 df_dec_side, _ = leer_decisiones()
-total_side   = len(df_dec_side)
+_titulos_base = len(pd.read_csv(CSV_TITULOS)) if CSV_TITULOS.exists() else 0
+total_side   = _titulos_base + len(df_dec_side)
 aplican_side = int((df_dec_side["decision_aplica"].astype(str).str.lower().isin(["true","1","si"])).sum()) if not df_dec_side.empty else 0
 secrets_ok   = bool(get_gh_config()[0])
 
