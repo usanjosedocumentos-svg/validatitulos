@@ -196,6 +196,44 @@ def extraer_datos_diploma(texto):
             if i + 1 < len(lineas): titular = lineas[i+1]; break
     return titulo, univ, pais, nivel, titular
 
+@st.cache_data(ttl=30)
+def leer_documentos():
+    df, sha = _gh_read("documentos_back.csv")
+    if df.empty:
+        df = pd.DataFrame(columns=["id","fecha","hora","nombre_titulo","universidad","pais",
+                                    "nivel","titular","tipo_archivo","nombre_archivo",
+                                    "archivo_b64","estado","revisor","decision","motivo"])
+    return df, sha
+
+def guardar_documento(nombre_titulo, universidad, pais, nivel, titular,
+                       tipo_archivo, nombre_archivo, archivo_b64):
+    df, sha = leer_documentos()
+    nid = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    nueva = pd.DataFrame([{
+        "id": nid,
+        "fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "hora":  datetime.now(timezone.utc).strftime("%H:%M:%S"),
+        "nombre_titulo": clean_text(nombre_titulo),
+        "universidad":   clean_text(universidad),
+        "pais":          pais,
+        "nivel":         nivel,
+        "titular":       clean_text(titular),
+        "tipo_archivo":  tipo_archivo,
+        "nombre_archivo":nombre_archivo,
+        "archivo_b64":   archivo_b64[:200] + "..." if len(archivo_b64)>200 else archivo_b64,
+        "estado":        "PENDIENTE",
+        "revisor":"","decision":"","motivo":""
+    }])
+    df = pd.concat([df, nueva], ignore_index=True)
+    ok, err = _gh_write("documentos_back.csv", df, sha, "New doc upload: "+nombre_titulo[:40])
+    leer_documentos.clear()
+    return ok, err, nid
+
+def contar_docs_pendientes():
+    df, _ = leer_documentos()
+    if df.empty or "estado" not in df.columns: return 0
+    return int((df["estado"].astype(str).str.upper() == "PENDIENTE").sum())
+
 @st.cache_resource
 def get_motor():
     return ValidadorCSV()
@@ -227,7 +265,10 @@ with st.sidebar:
         st.markdown("<div style='background:#ef4444;color:#fff;font-weight:700;border-radius:8px;padding:.5rem .9rem;margin-bottom:8px;text-align:center;font-size:.75rem'>Config. Secrets requerida</div>", unsafe_allow_html=True)
     elif pendientes_n > 0:
         st.markdown("<div style='background:#f59e0b;color:#000;font-weight:700;border-radius:8px;padding:.5rem .9rem;margin-bottom:8px;text-align:center'>PENDIENTES BACK: "+str(pendientes_n)+"</div>", unsafe_allow_html=True)
-    pagina = st.radio("Nav", ["Validar titulo","Ingresar diploma","Revision Back","Cargar datos","Historial","Dashboard"], label_visibility="collapsed")
+    docs_pend = contar_docs_pendientes()
+    if docs_pend > 0:
+        st.markdown("<div style='background:#3b82f6;color:#fff;font-weight:700;border-radius:8px;padding:.5rem .9rem;margin-bottom:8px;text-align:center'>DOCS PENDIENTES: "+str(docs_pend)+"</div>", unsafe_allow_html=True)
+    pagina = st.radio("Nav", ["Validar titulo","Cargar Documento","Ingresar diploma","Revision Back","Cargar datos","Historial","Dashboard"], label_visibility="collapsed")
     st.markdown(_card("Registros totales", total_side), unsafe_allow_html=True)
     st.markdown(_card("Aplican", aplican_side, "#4ade80"), unsafe_allow_html=True)
     if CSV_CONSULTAS.exists():
@@ -321,6 +362,79 @@ if pagina == "Validar titulo":
                     else:
                         st.error("Error al enviar: "+str(err))
 
+
+elif pagina == "Cargar Documento":
+    st.header("Cargar Documento de Titulo")
+    st.info("Sube el diploma o certificado del cliente. El Back lo vera de inmediato y tomara la decision.")
+
+    if not secrets_ok:
+        st.error("Configura GITHUB_TOKEN en Streamlit Secrets para usar esta funcion.")
+        st.stop()
+
+    docs_pend_n = contar_docs_pendientes()
+    if docs_pend_n > 0:
+        st.warning("Hay "+str(docs_pend_n)+" documento(s) pendiente(s) esperando revision del Back.")
+
+    with st.form("form_doc", clear_on_submit=True):
+        st.subheader("Datos del titulo")
+        fd1, fd2 = st.columns(2)
+        doc_titulo   = fd1.text_input("Nombre del titulo *", placeholder="Ej: Tecnologo en Gestion Logistica")
+        doc_univ     = fd2.text_input("Universidad *", placeholder="Ej: SENA")
+        fd3, fd4     = st.columns(2)
+        doc_pais     = fd3.selectbox("Pais", PAISES)
+        doc_nivel    = fd4.selectbox("Nivel academico", NIVELES)
+        doc_titular  = st.text_input("Nombre del titular", placeholder="Ej: Juan Perez Gomez")
+        st.markdown("---")
+        st.subheader("Documento soporte")
+        doc_archivo  = st.file_uploader(
+            "Sube el diploma o certificado (JPG, PNG, PDF) *",
+            type=["jpg","jpeg","png","pdf"],
+            help="Maximo 5MB. El Back podra visualizarlo directamente."
+        )
+        doc_submit = st.form_submit_button("Enviar al Back para revision", use_container_width=True, type="primary")
+
+    if doc_submit:
+        if not doc_titulo.strip():
+            st.error("El nombre del titulo es obligatorio.")
+        elif not doc_univ.strip():
+            st.error("La universidad es obligatoria.")
+        elif doc_archivo is None:
+            st.error("Debes subir al menos un documento soporte.")
+        else:
+            # Verificar si ya existe decision para este titulo
+            dec_dup = buscar_decision(doc_titulo.strip(), doc_univ.strip())
+            if dec_dup is not None:
+                aplica_x = str(dec_dup.get("decision_aplica","")).lower() in ["true","1","si"]
+                st.warning("Ya existe una decision del Back para este titulo.")
+                if aplica_x:
+                    st.success("APLICA | Nivel: "+str(dec_dup.get("nivel_confirmado","")).capitalize())
+                else:
+                    st.error("NO APLICA")
+                mot_x = str(dec_dup.get("motivo",""))
+                if mot_x and mot_x not in ("nan",""):
+                    st.info("Observacion del Back: "+mot_x)
+            else:
+                with st.spinner("Subiendo documento..."):
+                    import base64 as _b64
+                    archivo_bytes = doc_archivo.read()
+                    if len(archivo_bytes) > 5 * 1024 * 1024:
+                        st.error("El archivo supera 5MB. Por favor reduce el tamano.")
+                    else:
+                        archivo_b64_str = _b64.b64encode(archivo_bytes).decode("ascii")
+                        tipo = doc_archivo.type or "application/octet-stream"
+                        nombre_arch = doc_archivo.name
+                        ok, err, nid = guardar_documento(
+                            doc_titulo.strip(), doc_univ.strip(), doc_pais,
+                            doc_nivel, doc_titular.strip(),
+                            tipo, nombre_arch, archivo_b64_str
+                        )
+                    if ok:
+                        registrar_consulta(doc_titulo.strip(), "Documento cargado", doc_nivel, 0)
+                        st.success("Documento enviado al Back correctamente. ID: "+nid)
+                        st.info("El equipo Back recibira la alerta azul y podra visualizar el documento.")
+                        st.balloons()
+                    else:
+                        st.error("Error al subir el documento: "+str(err))
 
 elif pagina == "Ingresar diploma":
     st.header("Ingresar diploma")
@@ -419,6 +533,86 @@ elif pagina == "Revision Back":
                                 else:
                                     if not ok1: st.error("Error actualizando pendiente: "+str(e1))
                                     if not ok2: st.error("Error guardando historial: "+str(e2))
+
+    with tab_docs:
+        if not secrets_ok:
+            st.info("Configura GITHUB_TOKEN para ver documentos.")
+        else:
+            df_docs, sha_docs = leer_documentos()
+            docs_solo = df_docs[df_docs["estado"].astype(str).str.upper() == "PENDIENTE"] if not df_docs.empty and "estado" in df_docs.columns else pd.DataFrame()
+            if docs_solo.empty:
+                st.info("No hay documentos pendientes de revision.")
+            else:
+                st.markdown("**"+str(len(docs_solo))+" documento(s) esperando tu revision:**")
+                for _, doc_row in docs_solo.iterrows():
+                    doc_id    = str(doc_row.get("id",""))
+                    doc_tit   = str(doc_row.get("nombre_titulo",""))
+                    doc_date  = str(doc_row.get("fecha",""))+" "+str(doc_row.get("hora",""))
+                    doc_univ2 = str(doc_row.get("universidad",""))
+                    doc_tipo  = str(doc_row.get("tipo_archivo",""))
+                    doc_arch  = str(doc_row.get("nombre_archivo",""))
+                    doc_b64   = str(doc_row.get("archivo_b64",""))
+                    with st.expander("DOCUMENTO -- "+doc_tit+"  |  "+doc_date, expanded=True):
+                        col_doc_i, col_doc_f = st.columns([1,1])
+                        with col_doc_i:
+                            st.markdown("**Datos:**")
+                            st.write("Titulo: "+doc_tit)
+                            st.write("Universidad: "+doc_univ2)
+                            st.write("Pais: "+str(doc_row.get("pais","")))
+                            st.write("Nivel: "+str(doc_row.get("nivel","")))
+                            st.write("Titular: "+str(doc_row.get("titular","")))
+                            st.write("Archivo: "+doc_arch)
+                            # Mostrar vista previa del documento
+                            if doc_b64 and not doc_b64.endswith("...") and len(doc_b64) > 100:
+                                import base64 as _b64
+                                try:
+                                    doc_bytes = _b64.b64decode(doc_b64)
+                                    if "image" in doc_tipo:
+                                        st.image(doc_bytes, caption=doc_arch, use_column_width=True)
+                                    elif "pdf" in doc_tipo:
+                                        st.markdown("**Vista previa PDF:**")
+                                        pdf_b64_display = _b64.b64encode(doc_bytes).decode()
+                                        pdf_html = "<iframe src='data:application/pdf;base64,"+pdf_b64_display+"' width='100%' height='400px'></iframe>"
+                                        st.markdown(pdf_html, unsafe_allow_html=True)
+                                    # Boton de descarga
+                                    st.download_button("Descargar "+doc_arch, data=doc_bytes, file_name=doc_arch, mime=doc_tipo, key="dl_"+doc_id)
+                                except Exception as ex:
+                                    st.warning("No se pudo previsualizar: "+str(ex))
+                            elif doc_b64.endswith("..."):
+                                st.caption("Archivo grande - descarga disponible si se recarga completo")
+                        with col_doc_f:
+                            st.markdown("**Tu decision:**")
+                            idx_doc = df_docs[df_docs["id"].astype(str)==doc_id].index
+                            nv_doc  = str(doc_row.get("nivel","universitario"))
+                            dap = st.radio("Aplica?", ["Si, aplica","No aplica"], key="dap_"+doc_id)
+                            dnv = st.selectbox("Confirmar nivel", NIVELES, index=(NIVELES.index(nv_doc) if nv_doc in NIVELES else 0), key="dnv_"+doc_id)
+                            drv = st.text_input("Tu nombre", key="drv_"+doc_id, placeholder="Ej: Ana Gomez")
+                            dmo = st.text_area("Observaciones", key="dmo_"+doc_id, height=80)
+                            din = st.checkbox("Incorporar a la base", value=True, key="din_"+doc_id)
+                            dca, dcr = st.columns(2)
+                            dapr = dca.button("Aprobar",  key="doka_"+doc_id, use_container_width=True, type="primary")
+                            drec = dcr.button("Rechazar", key="dnoa_"+doc_id, use_container_width=True)
+                            if dapr or drec:
+                                aplica_doc = ("Si" in dap) and dapr
+                                estado_doc = "APROBADO" if dapr else "RECHAZADO"
+                                if len(idx_doc) > 0:
+                                    with st.spinner("Guardando..."):
+                                        df_docs.loc[idx_doc[0],"estado"]   = estado_doc
+                                        df_docs.loc[idx_doc[0],"revisor"]  = drv.strip()
+                                        df_docs.loc[idx_doc[0],"decision"] = "Aplica" if aplica_doc else "No aplica"
+                                        df_docs.loc[idx_doc[0],"motivo"]   = dmo.strip()
+                                        ok_d, err_d = _gh_write("documentos_back.csv", df_docs, sha_docs, estado_doc+": "+doc_tit[:40])
+                                        ok_h = ok_e2 = True; err_h = err_e2 = None
+                                        if ok_d:
+                                            leer_documentos.clear()
+                                            ok_h, err_h = guardar_decision(doc_tit, doc_univ2, str(doc_row.get("pais","Colombia")), dnv, aplica_doc, drv.strip(), dmo.strip(), din)
+                                    if ok_d and ok_h:
+                                        get_motor.clear()
+                                        st.success("Documento "+estado_doc+" y guardado en historial.")
+                                        st.rerun()
+                                    else:
+                                        if not ok_d: st.error("Error doc: "+str(err_d))
+                                        if not ok_h: st.error("Error historial: "+str(err_h))
 
     with tab_n:
         st.warning("Solo para el equipo Back.")
