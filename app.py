@@ -21,7 +21,7 @@ DIPLOMAS_DIR.mkdir(exist_ok=True)
 # Configuracion
 st.set_page_config(
     page_title="ValidaTitulos",
-    page_icon="📋",
+    page_icon="ð",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -134,7 +134,7 @@ if pagina == "Validar titulo":
                 if r.requiere_revision: css,bc,ico,est,cb="res-rev","badge-rev","aviso","REQUIERE REVISION BACK","#8a6a10"
                 elif r.aplica: css,bc,ico,est,cb="res-ok","badge-ok","ok","APLICA","#1d7a40"
                 else: css,bc,ico,est,cb="res-no","badge-no","no","NO APLICA","#7a1a1a"
-                st.markdown(f"<div class={css}><span class={bc}>{ico} {est}</span><p><b>Titulo:</b> {tu}<br><b>Nivel:</b> {r.nivel or 'N/D'}</p><div class=barra-bg><div style='width:{r.confianza_pct}%;background:{cb};height:8px;border-radius:4px'></div></div><p style='font-size:12px;opacity:.75'>{r.confianza_pct}% - {r.metodo}</p><p style='font-size:13px;opacity:.85'>{r.razon}</p></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class={css}><span class={bc}>{ico} {est}</span><p><b>Titulo:</b> {tu}<br><b>Nivel:</b> {r.nivel or 'N/D'}</p><div class=barra-bg><div style='width:{r.confianza_pct}%;background:{cb};height:8px;border-radius:4px'></div></div><p style='font-size:12px;opacity:.75'>{r.confianza_pct}% - {r.metodo}</p><p style='font-size:14px;opacity:1;font-weight:500'>{r.razon}</p></div>", unsafe_allow_html=True)
                 if r.requiere_revision: st.info("Ve a Ingresar diploma para enviar con documento adjunto.")
     with tab_sol:
         st.info("Envia el titulo al Back con el diploma adjunto.")
