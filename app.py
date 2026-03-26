@@ -1,5 +1,5 @@
 """
-app.py â ValidaTitulos Â· Interfaz Streamlit
+app.py Ã¢ÂÂ ValidaTitulos ÃÂ· Interfaz Streamlit
 ============================================
 Ejecutar:  streamlit run app.p
 """
@@ -19,7 +19,7 @@ DIPLOMAS_DIR.mkdir(exist_ok=True)
 
 st.set_page_config(
     page_title="ValidaTitulos",
-    page_icon="ð",
+    page_icon="Ã°ÂÂÂ",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -84,9 +84,9 @@ with st.sidebar:
         st.markdown(f"<div class='btn-pendiente'>PENDIENTES BACK: {n_pendientes}</div>", unsafe_allow_html=True)
     pagina = st.radio("", ["Validar titulo","Ingresar diploma","Revision Back","Cargar datos","Historial","Dashboard"], label_visibility="collapsed")
     st.divider()
-    if CSV_TITULO.exists():
-        df_t = pd.read_csv(CSV_TITULO)
-        aplican = df_t["aplica"].astype(str).str.lower().isin(["true","1","si","sÃ­","yes"]).sum() if "aplica" in df_t.columns else 0
+    if CSV_TITULOS.exists():
+        df_t = pd.read_csv(CSV_TITULOS)
+        aplican = df_t["aplica"].astype(str).str.lower().isin(["true","1","si","sÃÂ­","yes"]).sum() if "aplica" in df_t.columns else 0
         st.metric("Registros totales", len(df_t))
         st.metric("Aplican", int(aplican))
     consultas = 0
@@ -98,22 +98,22 @@ with st.sidebar:
     if st.button("Recargar base", use_container_width=True):
         get_motor.clear(); st.rerun()
 
-PAISES = ["Colombia","MÃ©xico","Argentina","Chile","PerÃº","Ecuador","Venezuela","EspaÃ±a","Otro"]
+PAISES = ["Colombia","MÃÂ©xico","Argentina","Chile","PerÃÂº","Ecuador","Venezuela","EspaÃÂ±a","Otro"]
 NIVELES = ["universitario","maestria","especializacion","doctorado","tecnologo","tecnico","bachillerato"]
 
 if pagina == "Validar titulo":
-    st.markdown("## Validar tÃ­tulo acadÃ©mico")
+    st.markdown("## Validar tÃÂ­tulo acadÃÂ©mico")
     df_sol = leer_solicitudes()
     n_pend = len(df_sol[df_sol["estado"] == "PENDIENTE"]) if not df_sol.empty else 0
     if n_pend: st.warning(f"El Back tiene {n_pend} solicitud(es) pendiente(s).")
-    tab_con, tab_sol = st.tabs(["Consultar tÃ­tulo","Solicitar validacion al Back"])
+    tab_con, tab_sol = st.tabs(["Consultar tÃÂ­tulo","Solicitar validacion al Back"])
     with tab_con:
         st.info("Ingresa el titulo para verificar si ya existe decision del Back.")
         c1, c2 = st.columns([3,2])
-        ti = c1.text_input("Nombre del tÃ­tulo *", placeholder="Ej: Tecnologo en Mercadotecnia")
+        ti = c1.text_input("Nombre del tÃÂ­tulo *", placeholder="Ej: Tecnologo en Mercadotecnia")
         uu = c2.text_input("Universidad (opcional)", placeholder="Ej: SENA")
         if st.button("Consultar", use_container_width=True, type="primary"):
-            if not ti.strip(): st.warning("Ingresa el nombre del tÃ­tulo.")
+            if not ti.strip(): st.warning("Ingresa el nombre del tÃÂ­tulo.")
             else:
                 tu = ti.strip().upper(); uu2 = uu.strip().upper()
                 r = get_motor().validar(tu, uu2, "Colombia")
@@ -121,7 +121,7 @@ if pagina == "Validar titulo":
                 if r.requiere_revision: css,bc,ico,est,cb="res-rev","badge-rev","justificar","REQUIERE REVISION BACK","#8a6a10"
                 elif r.aplica: css,bc,ico,est,cb="res-ok","badge-ok","valido","APLICA","#1d7a40"
                 else: css,bc,ico,est,cb="res-no","badge-no","novalido","NO APLICA","#7a1a1a"
-                st.markdown(f"<div class={css}><span class={bc}>{ico} {est}</span><p><b>TÃ­tulo:</b> {tu}<br><b>Nivel:</b> {r.nivel or 'N/D'}</p><div class=barra-bg><div style='width:{r.confianza_pct}%;background:{cb};height:8px;border-radius:4px'></div></div><p style='font-size:12px;opacity:.75'>{r.confianza_pct}% - {r.metodo}</p><p style='font-size:13px;opacity:.85'>{r.razon}</p></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class={css}><span class={bc}>{ico} {est}</span><p><b>TÃÂ­tulo:</b> {tu}<br><b>Nivel:</b> {r.nivel or 'N/D'}</p><div class=barra-bg><div style='width:{r.confianza_pct}%;background:{cb};height:8px;border-radius:4px'></div></div><p style='font-size:12px;opacity:.75'>{r.confianza_pct}% - {r.metodo}</p><p style='font-size:13px;opacity:.85'>{r.razon}</p></div>", unsafe_allow_html=True)
                 if r.requiere_revision: st.info("Ve a Ingresar diploma para enviar con documento adjunto.")
     with tab_sol:
         st.info("Envia el titulo al Back con el diploma adjunto.")
@@ -233,7 +233,7 @@ elif pagina == "Cargar datos":
             if "universidad" in dfn.columns: dfn["universidad"]=dfn["universidad"].str.upper().str.strip()
             sub = ["nombre_titulo","universidad"] if "universidad" in dfn.columns else ["nombre_titulo"]
             dfn = dfn.drop_duplicates(subset=sub)
-            if CSV_TITULO.exists():
+            if CSV_TITULOS.exists():
                 dfb = pd.read_csv(CSW_TITULK,dtype=str).fillna(""); dfb["nombre_titulo"]=dfb["nombre_titulo"].str.upper().str.strip()
                 dfc = pd.concat([dfb,dfn],ignore_index=True).drop_duplicates(subset=sub,keep="last")
             else: dfc = dfn
@@ -257,15 +257,15 @@ elif pagina == "Historial":
 elif pagina == "Dashboard":
     st.markdown("### Dashboard")
     cols = st.columns(4); df_sol = leer_solicitudes()
-    if CSV_TITULI.exists():
-        dft = pd.read_csv(CSV_TITULI)
+    if CSV_TITULOS.exists():
+        dft = pd.read_csv(CSV_TITULOS)
         ap = dft["aplica"].astype(str).str.lower().isin(["true","1","si","yes"]).sum() if "aplica" in dft.columns else 0
         cols[0].metric("Titulos",len(dft)); cols[1].metric("Aplican",int(ap)); cols[2].metric("No aplican",len(dft)-int(ap))
     if not df_sol.empty:
         cols[3].metric("Solicitudes",len(df_sol)); st.divider(); sc = st.columns(3)
-        sc[0].metric("Pendientes",len(df_sol[dfsol["estado"]=="PENDIENTE"]))
+        sc[0].metric("Pendientes",len(df_sol[df_sol["estado"]=="PENDIENTE"]))
         sc[1].metric("Aprobadas",len(df_sol[df_sol["estado"]=="APROBADA"]))
-        sc[2].metric("Rechazadas",len(df_sol[dfsol["estado"]=="RECHAZADA"]))
+        sc[2].metric("Rechazadas",len(df_sol[df_sol["estado"]=="RECHAZADA"]))
     if CSV_DECISIONES.exists():
         dfd = pd.read_csv(CSW_DECISIONES); st.divider(); st.markdown("#### Decisiones Back")
         if not dfd.empty and "nivel_confirmado" in dfd.columns:
