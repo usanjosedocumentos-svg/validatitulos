@@ -130,7 +130,7 @@ class ValidadorCSV:
             nivel = str(fila["nivel"])
             return Resultado(
                 aplica=bool(fila["aplica"]), nivel=nivel,
-                semestre=int(fila["semestre"]) if "semestre" in fila.index and pd.notna(fila["semestre"]) else SEMESTRE_POR_NIVEL.get(nivel),
+                semestre=(int(float(fila["semestre"])) if "semestre" in fila.index and pd.notna(fila["semestre"]) and str(fila["semestre"]).strip() not in ["", "nan", "NaN"] else SEMESTRE_POR_NIVEL.get(nivel)),
                 confianza=0.98, requiere_revision=False, metodo="exacto",
                 match=str(fila["nombre_titulo"]), razon="Coincidencia exacta en base historica")
         fuzzy_hits = self._fuzzy(tn)
