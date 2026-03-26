@@ -1,7 +1,7 @@
 """
 app.py â ValidaTitulos Â· Interfaz Streamlit
 ============================================
-Ejecutar:  streamlit run app.py
+Ejecutar:  streamlit run app.p
 """
 
 import streamlit as st
