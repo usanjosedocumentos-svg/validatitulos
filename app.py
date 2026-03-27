@@ -21,7 +21,7 @@ DIPLOMAS_DIR.mkdir(exist_ok=True)
 # Configuracion
 st.set_page_config(
     page_title="ValidaTitulos",
-    page_icon="ð",
+    page_icon="Ã°ÂÂÂ",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -87,7 +87,7 @@ with st.sidebar:
             f"<div class='btn-pendiente'>PENDIENTES BACK: {n_pendientes}</div>",
             unsafe_allow_html=True,
         )
-    pagina = st.radio("Navegacion", [
+    pagina = st.radio("", [
         "Validar titulo",
         "Ingresar diploma",
         "Revision Back",
@@ -135,7 +135,29 @@ if pagina == "Validar titulo":
                 elif r.aplica: css,bc,ico,est,cb="res-ok","badge-ok","ok","APLICA","#1d7a40"
                 else: css,bc,ico,est,cb="res-no","badge-no","no","NO APLICA","#7a1a1a"
                 st.markdown(f"<div class={css}><span class={bc}>{ico} {est}</span><p><b>Titulo:</b> {tu}<br><b>Nivel:</b> {r.nivel or 'N/D'}</p><div class=barra-bg><div style='width:{r.confianza_pct}%;background:{cb};height:8px;border-radius:4px'></div></div><p style='font-size:12px;opacity:.75'>{r.confianza_pct}% - {r.metodo}</p><p style='font-size:14px;opacity:1;font-weight:500'>{r.razon}</p></div>", unsafe_allow_html=True)
-                if r.requiere_revision: st.info("Ve a Ingresar diploma para enviar con documento adjunto.")
+                # --- Observaciones del Back ---
+                if CSV_DECISIONES.exists():
+                    try:
+                        df_dec = pd.read_csv(CSV_DECISIONES, dtype=str).fillna("")
+                        df_dec["_norm"] = df_dec["nombre_titulo"].str.upper().str.strip()
+                        match_dec = df_dec[df_dec["_norm"] == tu]
+                        if not match_dec.empty:
+                            dec_row = match_dec.iloc[-1]
+                            motivo_back = dec_row.get("motivo", "").strip()
+                            revisor_back = dec_row.get("revisor", "").strip()
+                            if motivo_back:
+                                revisor_html = f"<p style='margin:.3rem 0 0 0;font-size:12px;color:#8888aa'>Revisor: {revisor_back}</p>" if revisor_back else ""
+                                st.markdown(
+                                    f"<div style='background:#1a1a2e;border:1px solid #4a4aaa;border-radius:8px;padding:.75rem 1rem;margin:.5rem 0'>"
+                                    f"<p style='margin:0;font-size:13px;color:#aaaaff;font-weight:600'>&#128172; Observación del Back Office</p>"
+                                    f"<p style='margin:.4rem 0 0 0;font-size:14px;color:#e0e0ff'>{motivo_back}</p>"
+                                    + revisor_html + "</div>",
+                                    unsafe_allow_html=True
+                                )
+                    except Exception:
+                        pass
+                if r.requiere_revision:
+                    st.info("Ve a Ingresar diploma para enviar con documento adjunto.")
     with tab_sol:
         st.info("Envia el titulo al Back con el diploma adjunto.")
         ns = st.text_input("Nombre solicitante *", placeholder="Juan Perez")
@@ -229,6 +251,32 @@ elif pagina == "Revision Back":
         if not dfd.empty: st.dataframe(dfd,use_container_width=True,hide_index=True)
         else: st.info("Sin decisiones.")
     else: st.info("Sin decisiones.")
+    st.divider()
+    st.markdown("### Editar decision existente")
+    df_sol_edit = leer_solicitudes()
+    procesadas = df_sol_edit[df_sol_edit["estado"].isin(["APROBADA","RECHAZADA"])] if not df_sol_edit.empty else pd.DataFrame()
+    if procesadas.empty:
+        st.info("No hay decisiones registradas para editar.")
+    else:
+        opciones = ["-- Seleccionar --"] + [f"#{r['id']} - {r['titulo']} ({r['estado']})" for _,r in procesadas.iterrows()]
+        sel = st.selectbox("Selecciona la solicitud a editar:", opciones, key="edit_dec_sel")
+        if sel != "-- Seleccionar --":
+            sol_id = sel.split(" - ")[0].replace("#","")
+            row_e = procesadas[procesadas["id"]==sol_id].iloc[0]
+            with st.form(f"form_editar_{sol_id}"):
+                st.markdown(f"**Editando decision de:** {row_e['titulo']}")
+                et = st.text_input("Titulo revisado", value=row_e["titulo"])
+                eu = st.text_input("Universidad", value=row_e.get("universidad",""))
+                ea = st.radio("Aplica?", ["Si","No"], horizontal=True, index=0 if row_e["estado"]=="APROBADA" else 1)
+                en = st.selectbox("Nivel", NIVELES)
+                em = st.text_area("Motivo / observacion de la edicion", height=80)
+                ei = st.checkbox("Actualizar tambien en la base de titulos", value=False)
+                es = st.form_submit_button("Guardar cambio", use_container_width=True, type="primary")
+            if es and et.strip():
+                get_motor().guardar_decision(titulo=et.strip().upper(),universidad=eu.strip().upper(),pais=row_e.get("pais","Colombia"),aplica=(ea=="Si"),nivel=en,revisor="Edicion Back",motivo=em,incorporar=ei)
+                actualizar_estado_solicitud(sol_id,"APROBADA" if ea=="Si" else "RECHAZADA")
+                if ei: get_motor.clear()
+                st.success(f"Decision actualizada para #{sol_id}."); st.rerun()
 
 elif pagina == "Cargar datos":
     st.markdown("## Cargar datos")
@@ -284,46 +332,3 @@ elif pagina == "Dashboard":
         if not dfd.empty and "nivel_confirmado" in dfd.columns:
             c=dfd["nivel_confirmado"].value_counts().reset_index(); c.columns=["Nivel","Cantidad"]; st.dataframe(c,use_container_width=True,hide_index=True)
     else: st.info("Sin datos de decisiones.")
-
-# ── ELIMINACIÓN MANUAL DE REGISTROS ────────────────────────────────────────
-    st.markdown("---")
-    st.subheader("🗑️ Eliminar registros")
-    st.caption("Selecciona los registros que deseas eliminar permanentemente.")
-
-    csv_opcion = st.selectbox("¿De qué tabla?", [
-        "decisiones_back.csv",
-        "pendientes_back.csv",
-    ], key="sel_tabla_eliminar")
-
-    csv_map = {
-        "decisiones_back.csv":  CSV_DECISIONES,
-        "pendientes_back.csv":  CSV_PENDIENTES,
-    }
-    csv_path = csv_map[csv_opcion]
-
-    if csv_path.exists():
-        df_elim = pd.read_csv(csv_path)
-        if len(df_elim) == 0:
-            st.info("La tabla está vacía.")
-        else:
-            st.dataframe(df_elim, use_container_width=True)
-            indices = st.multiselect(
-                "Selecciona las filas a eliminar (por número de fila):",
-                options=list(range(len(df_elim))),
-                format_func=lambda i: f"Fila {i}: {df_elim.iloc[i].get('nombre_titulo', df_elim.iloc[i, 0])}",
-                key="rows_to_delete"
-            )
-            if indices:
-                if st.button(f"🗑️ Eliminar {len(indices)} registro(s) seleccionado(s)", type="primary", key="btn_eliminar_filas"):
-                    df_elim = df_elim.drop(index=indices).reset_index(drop=True)
-                    contenido_nuevo = df_elim.to_csv(index=False)
-                    ok = escribir_github(csv_opcion, contenido_nuevo, f"Eliminar {len(indices)} registros manualmente")
-                    if ok:
-                        st.success(f"✅ {len(indices)} registro(s) eliminado(s) correctamente.")
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error("❌ No se pudo guardar. Intenta de nuevo.")
-    else:
-        st.info("Archivo no encontrado.")
-
