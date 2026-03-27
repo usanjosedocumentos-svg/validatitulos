@@ -66,12 +66,22 @@ def guardar_solicitud(nombre, titulo, universidad, pais, diploma_path, notas="")
     }
     df = pd.concat([df, pd.DataFrame([nueva])], ignore_index=True)
     df.to_csv(CSV_SOLICITUDES, index=False)
+    # PROTECCION: guardar tambien en GitHub para no perder datos entre reinicios
+    try:
+        escribir_github("solicitudes_pendientes.csv", df.to_csv(index=False), f"Add solicitud: {nueva['titulo'][:40]}")
+    except Exception:
+        pass
     return nueva["id"]
 
 def actualizar_estado_solicitud(sol_id, nuevo_estado):
     df = leer_solicitudes()
     df.loc[df["id"] == sol_id, "estado"] = nuevo_estado
     df.to_csv(CSV_SOLICITUDES, index=False)
+    # PROTECCION: guardar tambien en GitHub para no perder datos entre reinicios
+    try:
+        escribir_github("solicitudes_pendientes.csv", df.to_csv(index=False), f"Update estado {sol_id}: {nuevo_estado}")
+    except Exception:
+        pass
 
 @st.cache_resource
 def get_motor():
