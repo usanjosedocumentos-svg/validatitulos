@@ -87,7 +87,7 @@ with st.sidebar:
             f"<div class='btn-pendiente'>PENDIENTES BACK: {n_pendientes}</div>",
             unsafe_allow_html=True,
         )
-    pagina = st.radio("Navegación", [
+    pagina = st.radio("", [
         "Validar titulo",
         "Ingresar diploma",
         "Revision Back",
