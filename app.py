@@ -272,30 +272,46 @@ elif pagina == "Revision Back":
     else: st.info("Sin decisiones.")
     st.divider()
     st.markdown("### Editar decision existente")
-    df_sol_edit = leer_solicitudes()
-    procesadas = df_sol_edit[df_sol_edit["estado"].isin(["APROBADA","RECHAZADA"])] if not df_sol_edit.empty else pd.DataFrame()
-    if procesadas.empty:
-        st.info("No hay decisiones registradas para editar.")
+    if CSV_DECISIONES.exists():
+        dfd_edit = pd.read_csv(CSV_DECISIONES)
+        if dfd_edit.empty:
+            st.info("No hay decisiones registradas para editar.")
+        else:
+            opciones_edit = ["-- Seleccionar --"] + [
+                f"Fila {i}: {row.get('nombre_titulo', '')} — {row.get('universidad', '')}"
+                for i, row in dfd_edit.iterrows()
+            ]
+            sel_edit = st.selectbox("Selecciona la decision a editar:", opciones_edit, key="edit_dec_sel")
+            if sel_edit != "-- Seleccionar --":
+                fila_edit = int(sel_edit.split(":")[0].replace("Fila","").strip())
+                row_e = dfd_edit.iloc[fila_edit]
+                with st.form(f"form_editar_{fila_edit}"):
+                    st.markdown(f"**Editando:** {row_e.get('nombre_titulo','')}")
+                    et = st.text_input("Titulo revisado", value=str(row_e.get("nombre_titulo","")))
+                    eu = st.text_input("Universidad", value=str(row_e.get("universidad","")))
+                    ea = st.radio("Aplica?", ["Si","No"], horizontal=True,
+                                  index=0 if str(row_e.get("decision_aplica","")).lower() in ["true","si","1"] else 1,
+                                  key="ea_edit")
+                    en = st.selectbox("Nivel", NIVELES,
+                                      index=NIVELES.index(row_e.get("nivel_confirmado","tecnico")) if row_e.get("nivel_confirmado","tecnico") in NIVELES else 0,
+                                      key="en_edit")
+                    em = st.text_area("Motivo / observacion", value=str(row_e.get("motivo","")), height=80, key="em_edit")
+                    es = st.form_submit_button("💾 Guardar cambios", use_container_width=True, type="primary")
+                if es and et.strip():
+                    dfd_edit.at[fila_edit, "nombre_titulo"]  = et.strip().upper()
+                    dfd_edit.at[fila_edit, "universidad"]    = eu.strip().upper()
+                    dfd_edit.at[fila_edit, "decision_aplica"] = (ea == "Si")
+                    dfd_edit.at[fila_edit, "nivel_confirmado"] = en
+                    dfd_edit.at[fila_edit, "motivo"]         = em
+                    ok = escribir_github("decisiones_back.csv", dfd_edit.to_csv(index=False), f"Editar fila {fila_edit} decision Back")
+                    if ok:
+                        st.success("✅ Decision actualizada correctamente.")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error("❌ No se pudo guardar. Intenta de nuevo.")
     else:
-        opciones = ["-- Seleccionar --"] + [f"#{r['id']} - {r['titulo']} ({r['estado']})" for _,r in procesadas.iterrows()]
-        sel = st.selectbox("Selecciona la solicitud a editar:", opciones, key="edit_dec_sel")
-        if sel != "-- Seleccionar --":
-            sol_id = sel.split(" - ")[0].replace("#","")
-            row_e = procesadas[procesadas["id"]==sol_id].iloc[0]
-            with st.form(f"form_editar_{sol_id}"):
-                st.markdown(f"**Editando decision de:** {row_e['titulo']}")
-                et = st.text_input("Titulo revisado", value=row_e["titulo"])
-                eu = st.text_input("Universidad", value=row_e.get("universidad",""))
-                ea = st.radio("Aplica?", ["Si","No"], horizontal=True, index=0 if row_e["estado"]=="APROBADA" else 1)
-                en = st.selectbox("Nivel", NIVELES)
-                em = st.text_area("Motivo / observacion de la edicion", height=80)
-                ei = st.checkbox("Actualizar tambien en la base de titulos", value=False)
-                es = st.form_submit_button("Guardar cambio", use_container_width=True, type="primary")
-            if es and et.strip():
-                get_motor().guardar_decision(titulo=et.strip().upper(),universidad=eu.strip().upper(),pais=row_e.get("pais","Colombia"),aplica=(ea=="Si"),nivel=en,revisor="Edicion Back",motivo=em,incorporar=ei)
-                actualizar_estado_solicitud(sol_id,"APROBADA" if ea=="Si" else "RECHAZADA")
-                if ei: get_motor.clear()
-                st.success(f"Decision actualizada para #{sol_id}."); st.rerun()
+        st.info("No hay decisiones registradas para editar.")
 
 elif pagina == "Cargar datos":
     st.markdown("## Cargar datos")
