@@ -219,7 +219,7 @@ elif pagina == "Revision Back":
     else:
         st.info(f"**{len(pend)} solicitud(es)** esperando decision.")
         for _, row in pend.iterrows():
-            with st.expander(f"#{row['id']} - {row['titulo']} - {row['nombre']} - {row['fecha']}"):
+            with st.expander(f"#{row['id']} - {row.get('titulo', row.get('nombre_titulo','Sin titulo'))} - {row.get('nombre', row.get('asesor',''))} - {row['fecha']}"):
                 cd,cf = st.columns([1,1])
                 with cd:
                     st.markdown("**Documento adjunto**")
@@ -233,14 +233,14 @@ elif pagina == "Revision Back":
                         else: st.warning("Formato no reconocido.")
                     else: st.warning("Sin documento adjunto.")
                     st.markdown("---")
-                    st.markdown(f"**Solicitante:** {row['nombre']}")
+                    st.markdown(f"**Solicitante:** {row.get('nombre', row.get('asesor',''))}")
                     st.markdown(f"**Universidad:** {row['universidad'] or '---'}")
                     st.markdown(f"**Pais:** {row['pais']}")
                     if row.get("notas"): st.markdown(f"**Notas:** {row['notas']}")
                 with cf:
                     st.markdown("**Registrar decision**")
                     with st.form(f"form_back_{row['id']}"):
-                        bt = st.text_input("Titulo revisado", value=row["titulo"])
+                        bt = st.text_input("Titulo revisado", value=row.get("titulo", row.get("nombre_titulo","Sin titulo")))
                         bu = st.text_input("Universidad", value=row["universidad"])
                         PB = PAISES; bp = st.selectbox("Pais",PB,index=PB.index(row["pais"]) if row["pais"] in PB else 0)
                         ba = st.radio("Aplica?",["Si","No"],horizontal=True)
