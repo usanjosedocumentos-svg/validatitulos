@@ -248,7 +248,26 @@ elif pagina == "Revision Back":
     st.markdown("### Historial decisiones Back")
     if CSV_DECISIONES.exists():
         dfd = pd.read_csv(CSV_DECISIONES)
-        if not dfd.empty: st.dataframe(dfd,use_container_width=True,hide_index=True)
+        if not dfd.empty:
+            st.dataframe(dfd, use_container_width=True, hide_index=True)
+            st.markdown("---")
+            st.markdown("**🗑️ Eliminar registro del historial**")
+            opciones_elim = ["-- Seleccionar --"] + [
+                f"Fila {i}: {row.get('nombre_titulo', row.iloc[0])} — {row.get('universidad','')}"
+                for i, row in dfd.iterrows()
+            ]
+            sel_elim = st.selectbox("Selecciona el registro a eliminar:", opciones_elim, key="sel_elim_hist")
+            if sel_elim != "-- Seleccionar --":
+                fila_num = int(sel_elim.split(":")[0].replace("Fila","").strip())
+                if st.button(f"🗑️ Confirmar eliminacion", type="primary", key="btn_elim_hist"):
+                    dfd2 = dfd.drop(index=fila_num).reset_index(drop=True)
+                    ok = escribir_github("decisiones_back.csv", dfd2.to_csv(index=False), f"Eliminar fila {fila_num} historial Back")
+                    if ok:
+                        st.success("✅ Registro eliminado.")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error("❌ No se pudo guardar.")
         else: st.info("Sin decisiones.")
     else: st.info("Sin decisiones.")
     st.divider()
