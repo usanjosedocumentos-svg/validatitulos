@@ -21,7 +21,7 @@ DIPLOMAS_DIR.mkdir(exist_ok=True)
 # Configuracion
 st.set_page_config(
     page_title="ValidaTitulos",
-    page_icon="ð",
+    page_icon="Ã°ÂÂÂ",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -229,6 +229,32 @@ elif pagina == "Revision Back":
         if not dfd.empty: st.dataframe(dfd,use_container_width=True,hide_index=True)
         else: st.info("Sin decisiones.")
     else: st.info("Sin decisiones.")
+    st.divider()
+    st.markdown("### Editar decision existente")
+    df_sol_edit = leer_solicitudes()
+    procesadas = df_sol_edit[df_sol_edit["estado"].isin(["APROBADA","RECHAZADA"])] if not df_sol_edit.empty else pd.DataFrame()
+    if procesadas.empty:
+        st.info("No hay decisiones registradas para editar.")
+    else:
+        opciones = ["-- Seleccionar --"] + [f"#{r['id']} - {r['titulo']} ({r['estado']})" for _,r in procesadas.iterrows()]
+        sel = st.selectbox("Selecciona la solicitud a editar:", opciones, key="edit_dec_sel")
+        if sel != "-- Seleccionar --":
+            sol_id = sel.split(" - ")[0].replace("#","")
+            row_e = procesadas[procesadas["id"]==sol_id].iloc[0]
+            with st.form(f"form_editar_{sol_id}"):
+                st.markdown(f"**Editando decision de:** {row_e['titulo']}")
+                et = st.text_input("Titulo revisado", value=row_e["titulo"])
+                eu = st.text_input("Universidad", value=row_e.get("universidad",""))
+                ea = st.radio("Aplica?", ["Si","No"], horizontal=True, index=0 if row_e["estado"]=="APROBADA" else 1)
+                en = st.selectbox("Nivel", NIVELES)
+                em = st.text_area("Motivo / observacion de la edicion", height=80)
+                ei = st.checkbox("Actualizar tambien en la base de titulos", value=False)
+                es = st.form_submit_button("Guardar cambio", use_container_width=True, type="primary")
+            if es and et.strip():
+                get_motor().guardar_decision(titulo=et.strip().upper(),universidad=eu.strip().upper(),pais=row_e.get("pais","Colombia"),aplica=(ea=="Si"),nivel=en,revisor="Edicion Back",motivo=em,incorporar=ei)
+                actualizar_estado_solicitud(sol_id,"APROBADA" if ea=="Si" else "RECHAZADA")
+                if ei: get_motor.clear()
+                st.success(f"Decision actualizada para #{sol_id}."); st.rerun()
 
 elif pagina == "Cargar datos":
     st.markdown("## Cargar datos")
