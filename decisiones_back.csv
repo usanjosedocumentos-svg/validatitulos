@@ -1,5 +1,4 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
-TECNOLOGO GESTION ADMINISTRATIVA,SENA,Colombia,tecnologo,True,CT,Aplica para administracion,2026-03-21,True,3.0
 TECNOLOGO EN RADIOLOGIA E IMAGENES DIAGNOSTICAS,CORSALUD,Colombia,tecnologo,False,CT,Ingresa desde bachiller,2026-03-21,True,3.0
 TECNICO PROFESIONAL EN PROCESOS ADMINISTRATIVOS,CUN,Colombia,tecnico,True,CT,Aplica para administracion,2026-03-21,True,2.0
 TECNOLOGO EN SUPERVISION DE LA FABRICACION DE PRODUCTOS METALICOS SOLDADOS,SENA,Colombia,tecnologo,False,CT,Ingresa desde bachiller,2026-03-21,True,3.0
