@@ -1,5 +1,4 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
-TECNOLOGO GESTION DEL TALENTO HUMANO,SENA,Colombia,tecnologo,True,CT,Aplica para ing industrial y administracion,2026-03-21,True,3.0
 TECNICO LABORAL EN AUXILIAR SOCIAL Y COMUNITARIO,CENTRO EDUCATIVO SAN PABLO CESP,Colombia,tecnico,False,CT,Ingresa desde bachiller,2026-03-21,True,2.0
 OPERACIONES MINERAS,CENTRO EDUCATIVO DE SISTEMAS,Colombia,tecnico,False,CT,Ingresa desde bachiller,2026-03-21,True,2.0
 TECNICO LABORAL POR COMPETENCIAS AUXILIAR ADMINISTRATIVO,CENFOCAT,Colombia,tecnico,True,CT,Aplica para administracion,2026-03-21,True,2.0
