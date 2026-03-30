@@ -147,9 +147,9 @@ if pagina == "Validar titulo":
             else:
                 tu = titulo_input.strip().upper(); uu = univ_input.strip().upper()
                 res = motor.validar(tu, uu if uu else None)
-                if res.requiere_revision:
+                if res is None or res.requiere_revision:
                     st.warning("⚠️ Titulo no encontrado en la base. Puedes solicitar validacion al Back.")
-                elif res.aplica:
+                elif res is not None and res.aplica:
                     st.success(f"✅ APLICA — Nivel: {res.nivel if res.nivel else ''}")
                 else:
                     st.error(f"❌ NO APLICA — Nivel: {res.nivel if res.nivel else ''}")
