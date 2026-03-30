@@ -1,5 +1,4 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
-TECNOLOGO EN PRODUCCION AGROPECUARIA ECOLOGICA,SENA,Colombia,tecnologo,False,CT,Ingresa como bachiller,2026-03-21,True,3.0
 TÂÂÂÂCNICO LABORAL POR COMPETENCIAS DEL PROGRAMA AUXILIAR ADMINISTRATIVO Y DE TALENTO HUMANO,EDUCACION FUTURO,Colombia,tecnico,True,,Aplica para administracion,2026-03-21,True,2.0
 TECNICO EN MANTENIMIENTO DE AUTOMATISMOS INDUSTRIALES,SENA,Colombia,tecnico,False,CT,Ingresa como bachiller,2026-03-21,True,2.0
 "TECNOLOGO EN GESTION INTEGRADA DE LA CALIDAD, MEDIO AMBIENTE, SEGURIDAD Y SALUD OCUPACIONAL",SENA,Colombia,tecnologo,True,Leidy Julieth Garca Fajardo,"No aplica para ingeniera de sistemas, este titulo aplica para ingresar a ingeniera industrial",2026-03-25,True,3.0
