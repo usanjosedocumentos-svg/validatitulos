@@ -1,5 +1,4 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
-TECNICO LABORAL EN SEGURIDAD OCUPACIONAL,UNIROIENTE,Colombia,tecnico,True,CT,Aplica para ing industrial,2026-03-21,True,2.0
 TECNICO EN SISTEMAS AGROPECUARIOS ECOLOGICOS,SENA,Colombia,tecnico,False,CT,Ingresa como bachiller,2026-03-21,True,2.0
 TECNOLOGO EN MANTENIMIENTO DE EQUIPO BIOMEDICO,SENA,Colombia,tecnologo,False,CT,Ingresa como bachiller,2026-03-21,True,3.0
 TECNOLOGO EN PRODUCCION AGROPECUARIA ECOLOGICA,SENA,Colombia,tecnologo,False,CT,Ingresa como bachiller,2026-03-21,True,3.0
