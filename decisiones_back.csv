@@ -1,5 +1,4 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
-TECNICO EN MANTENIMIENTO DE MOTORES DISEL,SENA,Colombia,tecnico,False,,Ingresa desde bachiller - CT,2026-03-21,True,2.0
 GESTION INTEGRADA DE LA CALIDAD MEDIO AMBIENTE,SENA,Colombia,tecnologo,False,True,No aplica,SENA,True,
 TECNICO ASISTENCIA ADMINISTRATIVA,SENA,Colombia,tecnico,True,CT,Aplica para administracion de empresas,2026-03-21,True,2.0
 TECNICO LABORAL POR COMPETENCIAS EN ELECTRONICA,INSTITUTO COLOMBIANO DE APRENDIZ INCAP,Colombia,tecnico,False,CT,Ingresa desde bachiller,2026-03-21,True,2.0
