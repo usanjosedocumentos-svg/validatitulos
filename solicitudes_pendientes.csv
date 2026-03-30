@@ -1,1 +1,1 @@
-id,nombre_titulo,universidad,pais,nivel,asesor,fecha,estado,diploma_path,motivo_rechazo
+id,titulo,nombre_titulo,universidad,pais,nombre,asesor,fecha,estado,diploma_path,notas,motivo_rechazo
