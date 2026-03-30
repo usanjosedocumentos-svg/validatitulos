@@ -1,379 +1,313 @@
 """
 app.py - ValidaTitulos - Interfaz Streamlit
-===========================================
-Ejecutar: streamlit run app.py
 """
-
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-import uuid, shutil
+import uuid
+import urllib.request, urllib.error, json, base64
 from datetime import datetime, timezone
-
 from validador import ValidadorCSV, CSV_TITULOS, CSV_DECISIONES
 
-# Rutas
 BASE_DIR        = Path(__file__).parent
+CSV_PENDIENTES  = BASE_DIR / "pendientes_back.csv"
 CSV_SOLICITUDES = BASE_DIR / "solicitudes_pendientes.csv"
 DIPLOMAS_DIR    = BASE_DIR / "diplomas"
 DIPLOMAS_DIR.mkdir(exist_ok=True)
+NIVELES = ["bachillerato","tecnico","tecnologo","universitario","especializacion","maestria","doctorado"]
 
-# Configuracion
-st.set_page_config(
-    page_title="ValidaTitulos",
-    page_icon="Ã°ÂÂÂ",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+def escribir_github(nombre_archivo, contenido, mensaje_commit):
+    try:
+        token = st.secrets["GITHUB_TOKEN"]
+        repo  = st.secrets["GITHUB_REPO"]
+        url   = f"https://api.github.com/repos/{repo}/contents/{nombre_archivo}"
+        req_g = urllib.request.Request(url, headers={"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"})
+        try:
+            with urllib.request.urlopen(req_g) as r: sha = json.loads(r.read())["sha"]
+        except urllib.error.HTTPError as e:
+            sha = None if e.code == 404 else (_ for _ in ()).throw(e)
+        b64 = base64.b64encode(contenido.encode("utf-8")).decode("utf-8")
+        body = {"message": mensaje_commit, "content": b64}
+        if sha: body["sha"] = sha
+        req_p = urllib.request.Request(url, data=json.dumps(body).encode(), method="PUT",
+            headers={"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json", "Content-Type": "application/json"})
+        with urllib.request.urlopen(req_p): pass
+        return True
+    except Exception as e:
+        st.error(f"Error GitHub: {e}"); return False
 
-st.markdown("""
-<style>
-[data-testid="stSidebar"] { background-color: #1a1a1a !important; }
-[data-testid="stSidebar"] * { color: #e0e0e0 !important; }
-.res-ok   { background:#0d2b1a; border:1px solid #1d7a40; border-radius:8px; padding:1rem 1.25rem; margin:.5rem 0; }
-.res-no   { background:#2b0d0d; border:1px solid #7a1a1a; border-radius:8px; padding:1rem 1.25rem; margin:.5rem 0; }
-.res-rev  { background:#2b220d; border:1px solid #8a6a10; border-radius:8px; padding:1rem 1.25rem; margin:.5rem 0; }
-.badge-ok  { background:#1d7a40; color:#d4f5e2; padding:3px 10px; border-radius:4px; font-size:13px; font-weight:600; }
-.badge-no  { background:#7a1a1a; color:#f5d4d4; padding:3px 10px; border-radius:4px; font-size:13px; font-weight:600; }
-.badge-rev { background:#8a6a10; color:#f5e8c0; padding:3px 10px; border-radius:4px; font-size:13px; font-weight:600; }
-.barra-bg  { background:#333; border-radius:4px; height:8px; margin:.5rem 0; }
-.btn-pendiente { background:#c47b00 !important; color:#fff !important; font-weight:700 !important;
-                 border:none !important; border-radius:6px; padding:8px 0; text-align:center;
-                 width:100%; display:block; margin-bottom:.75rem; }
-</style>
-""", unsafe_allow_html=True)
-
+@st.cache_data(ttl=30)
 def leer_solicitudes():
     if CSV_SOLICITUDES.exists():
         try:
-            return pd.read_csv(CSV_SOLICITUDES, dtype=str).fillna("")
-        except Exception:
-            pass
-    return pd.DataFrame(columns=["id","fecha","nombre","titulo","universidad","pais","estado","diploma_path","notas"])
+            df = pd.read_csv(CSV_SOLICITUDES)
+            if "titulo" not in df.columns and "nombre_titulo" in df.columns: df["titulo"] = df["nombre_titulo"]
+            if "nombre" not in df.columns and "asesor" in df.columns: df["nombre"] = df["asesor"]
+            return df
+        except: pass
+    return pd.DataFrame(columns=["id","titulo","nombre_titulo","universidad","pais","nombre","asesor","fecha","estado","diploma_path","notas","motivo_rechazo"])
+
+@st.cache_data(ttl=30)
+def leer_decisiones():
+    try: return pd.read_csv(CSV_DECISIONES) if CSV_DECISIONES.exists() else pd.DataFrame()
+    except: return pd.DataFrame()
 
 def guardar_solicitud(nombre, titulo, universidad, pais, diploma_path, notas=""):
     df = leer_solicitudes()
-    nueva = {
-        "id":           str(uuid.uuid4())[:8].upper(),
-        "fecha":        datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
-        "nombre":       nombre.strip().upper(),
-        "titulo":       titulo.strip().upper(),
-        "universidad":  universidad.strip().upper(),
-        "pais":         pais,
-        "estado":       "PENDIENTE",
-        "diploma_path": str(diploma_path) if diploma_path else "",
-        "notas":        notas,
-    }
+    nid = str(uuid.uuid4())[:8].upper()
+    nueva = {"id":nid,"fecha":datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
+        "nombre":nombre.strip().upper(),"asesor":nombre.strip().upper(),
+        "titulo":titulo.strip().upper(),"nombre_titulo":titulo.strip().upper(),
+        "universidad":universidad.strip().upper() if universidad else "","pais":pais,
+        "estado":"PENDIENTE","diploma_path":str(diploma_path) if diploma_path else "","notas":notas,"motivo_rechazo":""}
     df = pd.concat([df, pd.DataFrame([nueva])], ignore_index=True)
     df.to_csv(CSV_SOLICITUDES, index=False)
-    # PROTECCION: guardar tambien en GitHub para no perder datos entre reinicios
-    try:
-        escribir_github("solicitudes_pendientes.csv", df.to_csv(index=False), f"Add solicitud: {nueva['titulo'][:40]}")
-    except Exception:
-        pass
-    return nueva["id"]
+    escribir_github("solicitudes_pendientes.csv", df.to_csv(index=False), f"Add solicitud: {titulo.strip().upper()[:40]}")
+    return nid
 
 def actualizar_estado_solicitud(sol_id, nuevo_estado):
     df = leer_solicitudes()
-    df.loc[df["id"] == sol_id, "estado"] = nuevo_estado
+    df.loc[df["id"]==sol_id,"estado"] = nuevo_estado
     df.to_csv(CSV_SOLICITUDES, index=False)
-    # PROTECCION: guardar tambien en GitHub para no perder datos entre reinicios
-    try:
-        escribir_github("solicitudes_pendientes.csv", df.to_csv(index=False), f"Update estado {sol_id}: {nuevo_estado}")
-    except Exception:
-        pass
+    escribir_github("solicitudes_pendientes.csv", df.to_csv(index=False), f"Update {sol_id}: {nuevo_estado}")
 
 @st.cache_resource
-def get_motor():
-    return ValidadorCSV()
+def get_motor(): return ValidadorCSV()
+
+st.set_page_config(page_title="ValidaTitulos", layout="wide", page_icon="🎓")
+st.markdown("""<style>
+.btn-pendiente{background:#f97316;color:#fff;border-radius:8px;padding:10px 0;font-weight:700;font-size:1rem;text-align:center;margin-bottom:8px;}
+[data-testid="stSidebar"]{background:#111827;}
+[data-testid="stSidebar"] *{color:#f3f4f6 !important;}
+</style>""", unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown("## ValidaTitulos")
+    st.markdown("<div style='font-size:1.3rem;font-weight:700;margin-bottom:4px'>🎓 ValidaTitulos</div>", unsafe_allow_html=True)
     st.caption("Sistema de uso interno")
-    df_sol = leer_solicitudes()
-    n_pendientes = len(df_sol[df_sol["estado"] == "PENDIENTE"]) if not df_sol.empty else 0
-    if n_pendientes:
-        st.markdown(
-            f"<div class='btn-pendiente'>PENDIENTES BACK: {n_pendientes}</div>",
-            unsafe_allow_html=True,
-        )
-    pagina = st.radio("Navegacion", [
-        "Validar titulo",
-        "Ingresar diploma",
-        "Revision Back",
-        "Cargar datos",
-        "Historial",
-        "Dashboard",
-    ], label_visibility="collapsed")
+    df_sol_sb = leer_solicitudes()
+    n_pend = len(df_sol_sb[df_sol_sb["estado"]=="PENDIENTE"]) if not df_sol_sb.empty else 0
+    if n_pend:
+        st.markdown(f"<div class='btn-pendiente'>PENDIENTES BACK: {n_pend}</div>", unsafe_allow_html=True)
+    pagina = st.radio("Navegacion", ["Validar titulo","Ingresar diploma","Revision Back","Cargar datos","Historial","Dashboard"], label_visibility="collapsed")
     st.divider()
     motor = get_motor()
-    if CSV_TITULOS.exists():
-        df_t = pd.read_csv(CSV_TITULOS)
-        aplican = df_t["aplica"].astype(str).str.lower().isin(["true","1","si","yes"]).sum() if "aplica" in df_t.columns else 0
-        st.metric("Registros totales", len(df_t))
-        st.metric("Aplican", int(aplican))
-    consultas = 0
-    if CSV_DECISIONES.exists():
-        try: consultas = len(pd.read_csv(CSV_DECISIONES))
-        except: pass
-    st.metric("Consultas totales", consultas)
-    st.divider()
+    df_t = pd.read_csv(CSV_TITULOS) if CSV_TITULOS.exists() else pd.DataFrame()
+    df_d = leer_decisiones()
+    apl  = int(df_t["aplica"].astype(str).str.lower().isin(["true","1","si","yes"]).sum()) if "aplica" in df_t.columns else 0
+    st.metric("Registros totales", len(df_t))
+    st.metric("Aplican", apl)
+    st.metric("Consultas totales", len(df_d))
     if st.button("Recargar base", use_container_width=True):
-        get_motor.clear(); st.rerun()
-
-PAISES = ["Colombia","Mexico","Argentina","Chile","Peru","Ecuador","Venezuela","Espana","Otro"]
-NIVELES = ["universitario","maestria","especializacion","doctorado","tecnologo","tecnico","bachillerato"]
+        get_motor.clear(); st.cache_data.clear(); st.rerun()
 
 if pagina == "Validar titulo":
-    st.markdown("## Validar titulo academico")
-    df_sol = leer_solicitudes()
-    n_pend = len(df_sol[df_sol["estado"] == "PENDIENTE"]) if not df_sol.empty else 0
-    if n_pend: st.warning(f"El Back tiene {n_pend} solicitud(es) pendiente(s) por aprobar.")
-    tab_con, tab_sol = st.tabs(["Consultar titulo","Solicitar validacion al Back"])
-    with tab_con:
+    st.title("Validar titulo academico")
+    if n_pend: st.info(f"El Back tiene {n_pend} solicitud(es) pendiente(s) para aprobar.")
+    tab1, tab2 = st.tabs(["Consultar titulo","Solicitar validacion al Back"])
+    with tab1:
         st.info("Ingresa el titulo para verificar si ya existe decision del Back.")
-        c1, c2 = st.columns([3,2])
-        ti = c1.text_input("Nombre del titulo *", placeholder="Ej: Tecnologo en Mercadotecnia")
-        uu = c2.text_input("Universidad (opcional)", placeholder="Ej: SENA")
-        if st.button("Consultar", use_container_width=True, type="primary"):
-            if not ti.strip(): st.warning("Ingresa el nombre del titulo.")
+        c1,c2 = st.columns([2,1])
+        titulo_input = c1.text_input("Nombre del titulo *", placeholder="Ej: Tecnologo en Mercadotecnia")
+        univ_input   = c2.text_input("Universidad (opcional)", placeholder="Ej: SENA")
+        if st.button("Consultar", type="primary", use_container_width=True):
+            if not titulo_input.strip():
+                st.warning("Ingresa al menos el nombre del titulo.")
             else:
-                tu = ti.strip().upper(); uu2 = uu.strip().upper()
-                r = get_motor().validar(tu, uu2, "Colombia")
-                st.session_state.update({"prefill_titulo":tu,"prefill_univ":uu2})
-                if r.requiere_revision: css,bc,ico,est,cb="res-rev","badge-rev","aviso","REQUIERE REVISION BACK","#8a6a10"
-                elif r.aplica: css,bc,ico,est,cb="res-ok","badge-ok","ok","APLICA","#1d7a40"
-                else: css,bc,ico,est,cb="res-no","badge-no","no","NO APLICA","#7a1a1a"
-                st.markdown(f"<div class={css}><span class={bc}>{ico} {est}</span><p><b>Titulo:</b> {tu}<br><b>Nivel:</b> {r.nivel or 'N/D'}</p><div class=barra-bg><div style='width:{r.confianza_pct}%;background:{cb};height:8px;border-radius:4px'></div></div><p style='font-size:12px;opacity:.75'>{r.confianza_pct}% - {r.metodo}</p><p style='font-size:14px;opacity:1;font-weight:500'>{r.razon}</p></div>", unsafe_allow_html=True)
-                # --- Observaciones del Back ---
-                if CSV_DECISIONES.exists():
-                    try:
-                        df_dec = pd.read_csv(CSV_DECISIONES, dtype=str).fillna("")
-                        df_dec["_norm"] = df_dec["nombre_titulo"].str.upper().str.strip()
-                        match_dec = df_dec[df_dec["_norm"] == tu]
-                        if not match_dec.empty:
-                            dec_row = match_dec.iloc[-1]
-                            motivo_back = dec_row.get("motivo", "").strip()
-                            revisor_back = dec_row.get("revisor", "").strip()
-                            if motivo_back:
-                                revisor_html = f"<p style='margin:.3rem 0 0 0;font-size:12px;color:#8888aa'>Revisor: {revisor_back}</p>" if revisor_back else ""
-                                st.markdown(
-                                    f"<div style='background:#1a1a2e;border:1px solid #4a4aaa;border-radius:8px;padding:.75rem 1rem;margin:.5rem 0'>"
-                                    f"<p style='margin:0;font-size:13px;color:#aaaaff;font-weight:600'>&#128172; Observación del Back Office</p>"
-                                    f"<p style='margin:.4rem 0 0 0;font-size:14px;color:#e0e0ff'>{motivo_back}</p>"
-                                    + revisor_html + "</div>",
-                                    unsafe_allow_html=True
-                                )
-                    except Exception:
-                        pass
-                if r.requiere_revision:
-                    st.info("Ve a Ingresar diploma para enviar con documento adjunto.")
-    with tab_sol:
-        st.info("Envia el titulo al Back con el diploma adjunto.")
-        ns = st.text_input("Nombre solicitante *", placeholder="Juan Perez")
-        c3,c4 = st.columns([3,2])
-        ts = c3.text_input("Titulo *", value=st.session_state.get("prefill_titulo",""), placeholder="TECNOLOGO EN MERCADEO")
-        us = c4.text_input("Universidad", value=st.session_state.get("prefill_univ",""), placeholder="SENA")
-        ps = st.selectbox("Pais", PAISES, key="ps_sol")
-        ds = st.file_uploader("Diploma o acta (PDF, JPG, PNG) *", type=["pdf","png","jpg","jpeg"], key="du_sol")
-        nts = st.text_area("Notas", height=70, key="nt_sol")
-        if st.button("Enviar al Back", use_container_width=True, type="primary", key="btn_sol"):
-            if not ns.strip() or not ts.strip(): st.error("Nombre y titulo obligatorios.")
-            elif ds is None: st.error("Adjunta el diploma.")
+                tu = titulo_input.strip().upper(); uu = univ_input.strip().upper()
+                res = motor.validar(tu, uu if uu else None)
+                if res.decision == "APROBADA": st.success(f"APLICA — Nivel: {res.nivel_confirmado}")
+                elif res.decision == "RECHAZADA": st.error(f"NO APLICA — Nivel: {res.nivel_confirmado}")
+                else: st.warning("Titulo no encontrado. Puedes solicitar validacion al Back.")
+                df_dc = leer_decisiones()
+                if not df_dc.empty:
+                    match = df_dc[df_dc["nombre_titulo"].str.upper().str.strip() == tu]
+                    if match.empty: match = df_dc[df_dc["nombre_titulo"].str.upper().str.contains(tu[:15], na=False)]
+                    if not match.empty:
+                        rm = match.iloc[-1]
+                        mot = str(rm.get("motivo","")).strip(); rev = str(rm.get("revisor","")).strip()
+                        ap  = str(rm.get("decision_aplica","")).strip(); niv = str(rm.get("nivel_confirmado","")).strip()
+                        st.markdown("---"); st.markdown("### Informacion del Back Office")
+                        ca,cb = st.columns(2)
+                        ca.markdown(f"**Aplica:** {'SI' if ap.lower() in ['true','1','si'] else 'NO'}")
+                        cb.markdown(f"**Nivel:** {niv}")
+                        if mot and mot.lower() not in ["nan","none",""]:
+                            st.info(f"Observacion del Back: {mot}")
+                        if rev and rev.lower() not in ["nan","none",""]:
+                            st.caption(f"Autorizado por: {rev}")
+    with tab2:
+        st.markdown("### Solicitar validacion al Back")
+        with st.form("form_sol"):
+            sn=st.text_input("Tu nombre *"); st2=st.text_input("Titulo a validar *", value=titulo_input if titulo_input else "")
+            su=st.text_input("Universidad"); sp=st.selectbox("Pais",["Colombia","Venezuela","Ecuador","Peru","Otro"])
+            ss=st.text_area("Notas",height=60); sd=st.file_uploader("Diploma (opcional)",type=["jpg","jpeg","png","pdf"])
+            sbtn=st.form_submit_button("Enviar al Back",type="primary",use_container_width=True)
+        if sbtn:
+            if not sn.strip() or not st2.strip(): st.error("Nombre y titulo obligatorios.")
             else:
-                ext = Path(ds.name).suffix; fn = f"{str(uuid.uuid4())[:8]}{ext}"
-                (DIPLOMAS_DIR/fn).write_bytes(ds.read())
-                sid = guardar_solicitud(ns,ts,us,ps,fn,nts)
-                st.success(f"Solicitud #{sid} enviada al Back.")
-                st.session_state.pop("prefill_titulo",None); st.session_state.pop("prefill_univ",None)
+                df_ck = leer_solicitudes(); tn = st2.strip().upper()
+                ya = False
+                if not df_ck.empty and "estado" in df_ck.columns:
+                    tp = df_ck[df_ck["estado"]=="PENDIENTE"].get("titulo",pd.Series([])).str.upper().str.strip()
+                    ya = tp.str.contains(tn[:20],na=False).any()
+                if ya:
+                    st.warning(f"El titulo {tn} ya esta PENDIENTE. No es necesario enviarlo de nuevo.")
+                else:
+                    dp=""
+                    if sd:
+                        ext=Path(sd.name).suffix; fn=f"{uuid.uuid4().hex[:8]}{ext}"; (DIPLOMAS_DIR/fn).write_bytes(sd.read()); dp=fn
+                    sid=guardar_solicitud(sn,st2,su,sp,dp,ss); st.cache_data.clear(); st.success(f"Solicitud #{sid} enviada.")
 
 elif pagina == "Ingresar diploma":
-    st.markdown("## Ingresar diploma")
-    st.info("Registra un diploma y adjunta el archivo para revision del Back.")
-    nd = st.text_input("Nombre solicitante *", placeholder="Maria Lopez")
-    c1d,c2d = st.columns([3,2])
-    td = c1d.text_input("Titulo *", placeholder="TECNOLOGA EN CONTABILIDAD")
-    ud = c2d.text_input("Universidad", placeholder="SENA")
-    pd2 = st.selectbox("Pais", PAISES, key="pd2")
-    dd = st.file_uploader("Diploma / Acta (PDF, JPG, PNG) *", type=["pdf","png","jpg","jpeg"], key="dd_up")
-    notasd = st.text_area("Notas", height=70, key="notasd")
-    if dd:
-        st.markdown("**Vista previa:**")
-        if dd.type.startswith("image"): st.image(dd, use_container_width=True)
-        else: st.info(f"PDF adjunto: {dd.name} ({dd.size:,} bytes)")
-    if st.button("Ingresar y enviar al Back", use_container_width=True, type="primary", key="btn_dip"):
-        if not nd.strip() or not td.strip(): st.error("Nombre y titulo obligatorios.")
-        elif dd is None: st.error("Adjunta el diploma.")
+    st.title("Ingresar diploma")
+    with st.form("form_dip"):
+        dn=st.text_input("Tu nombre *"); dt=st.text_input("Titulo *"); du=st.text_input("Universidad")
+        dpais=st.selectbox("Pais",["Colombia","Venezuela","Ecuador","Peru","Otro"])
+        df2=st.file_uploader("Diploma *",type=["jpg","jpeg","png","pdf"]); dnotas=st.text_area("Observaciones",height=60)
+        dsub=st.form_submit_button("Cargar diploma",type="primary",use_container_width=True)
+    if dsub:
+        if not dn.strip() or not dt.strip() or not df2: st.error("Nombre, titulo y archivo obligatorios.")
         else:
-            dd.seek(0); ext = Path(dd.name).suffix; fn = f"{str(uuid.uuid4())[:8]}{ext}"
-            (DIPLOMAS_DIR/fn).write_bytes(dd.read())
-            sid = guardar_solicitud(nd,td,ud,pd2,fn,notasd)
-            st.success(f"Diploma ingresado. Solicitud #{sid} enviada al Back.")
+            ext=Path(df2.name).suffix; fn=f"{uuid.uuid4().hex[:8]}{ext}"; (DIPLOMAS_DIR/fn).write_bytes(df2.read())
+            sid=guardar_solicitud(dn,dt,du,dpais,fn,dnotas); st.cache_data.clear(); st.success(f"Diploma cargado. Solicitud #{sid} enviada.")
 
 elif pagina == "Revision Back":
     st.markdown("## Revision Back")
-    st.caption("Solicitudes pendientes de aprobacion manual.")
-    df_sol = leer_solicitudes()
-    pend = df_sol[df_sol["estado"]=="PENDIENTE"] if not df_sol.empty else pd.DataFrame()
+    df_sol=leer_solicitudes(); pend=df_sol[df_sol["estado"]=="PENDIENTE"] if not df_sol.empty else pd.DataFrame()
     if pend.empty: st.success("No hay solicitudes pendientes.")
     else:
-        st.info(f"**{len(pend)} solicitud(es)** esperando decision.")
-        for _, row in pend.iterrows():
-            with st.expander(f"#{row['id']} - {row.get('titulo', row.get('nombre_titulo','Sin titulo'))} - {row.get('nombre', row.get('asesor',''))} - {row['fecha']}"):
-                cd,cf = st.columns([1,1])
+        st.info(f"{len(pend)} solicitud(es) esperando decision.")
+        for _,row in pend.iterrows():
+            td=row.get("titulo",row.get("nombre_titulo","Sin titulo")); nd=row.get("nombre",row.get("asesor",""))
+            with st.expander(f"#{row['id']} - {td} - {nd} - {row['fecha']}"):
+                cd,cf=st.columns([1,1])
                 with cd:
                     st.markdown("**Documento adjunto**")
-                    dp = DIPLOMAS_DIR / row["diploma_path"] if row["diploma_path"] else None
+                    dp=DIPLOMAS_DIR/row["diploma_path"] if row.get("diploma_path") else None
                     if dp and dp.exists():
-                        ext = dp.suffix.lower()
-                        if ext in [".jpg",".jpeg",".png",".webp"]: st.image(str(dp), use_container_width=True)
-                        elif ext == ".pdf":
-                            st.download_button(f"Descargar PDF - {row['diploma_path']}", data=open(dp,"rb").read(), file_name=row["diploma_path"], mime="application/pdf", use_container_width=True)
-                            st.info("PDF adjunto. Descarga para revisar.")
-                        else: st.warning("Formato no reconocido.")
-                    else: st.warning("Sin documento adjunto.")
-                    st.markdown("---")
-                    st.markdown(f"**Solicitante:** {row.get('nombre', row.get('asesor',''))}")
-                    st.markdown(f"**Universidad:** {row['universidad'] or '---'}")
-                    st.markdown(f"**Pais:** {row['pais']}")
-                    if row.get("notas"): st.markdown(f"**Notas:** {row['notas']}")
+                        if dp.suffix.lower() in [".jpg",".jpeg",".png"]: st.image(str(dp),use_container_width=True)
+                        else:
+                            with open(dp,"rb") as f: st.download_button("Descargar PDF",f.read(),file_name=dp.name)
+                    else: st.caption("Sin documento.")
                 with cf:
-                    st.markdown("**Registrar decision**")
-                    with st.form(f"form_back_{row['id']}"):
-                        bt = st.text_input("Titulo revisado", value=row.get("titulo", row.get("nombre_titulo","Sin titulo")))
-                        bu = st.text_input("Universidad", value=row["universidad"])
-                        PB = PAISES; bp = st.selectbox("Pais",PB,index=PB.index(row["pais"]) if row["pais"] in PB else 0)
-                        ba = st.radio("Aplica?",["Si","No"],horizontal=True)
-                        bn = st.selectbox("Nivel", NIVELES)
-                        br2 = st.text_input("Revisor", placeholder="Nombre analista")
-                        bm = st.text_area("Motivo", height=80)
-                        bi = st.checkbox("Incorporar a la base", value=True)
-                        bs = st.form_submit_button("Guardar decision", use_container_width=True, type="primary")
+                    with st.form(f"fb_{row['id']}"):
+                        bt=st.text_input("Titulo",value=td); bu=st.text_input("Universidad",value=str(row.get("universidad","")))
+                        bp=st.text_input("Pais",value=str(row.get("pais","Colombia")))
+                        ba=st.radio("Aplica?",["Si","No"],horizontal=True,key=f"ba_{row['id']}")
+                        bn=st.selectbox("Nivel",NIVELES,key=f"bn_{row['id']}")
+                        br=st.text_input("Revisor",key=f"br_{row['id']}")
+                        bm=st.text_area("Observacion del Back Office",height=80,key=f"bm_{row['id']}")
+                        bi=st.checkbox("Incorporar a base",value=True,key=f"bi_{row['id']}")
+                        bs=st.form_submit_button("Guardar decision",type="primary",use_container_width=True)
                     if bs and bt.strip():
-                        get_motor().guardar_decision(titulo=bt.strip().upper(),universidad=bu.strip().upper(),pais=bp,aplica=(ba=="Si"),nivel=bn,revisor=br2,motivo=bm,incorporar=bi)
-                        actualizar_estado_solicitud(row["id"],"APROBADA" if ba=="Si" else "RECHAZADA")
+                        av=(ba=="Si")
+                        motor.guardar_decision(titulo=bt.strip().upper(),universidad=bu.strip().upper(),pais=bp,aplica=av,nivel=bn,revisor=br.strip(),motivo=bm.strip().replace(",",""),incorporar=bi)
+                        actualizar_estado_solicitud(row["id"],"APROBADA" if av else "RECHAZADA")
                         if bi: get_motor.clear()
-                        st.success("Decision guardada."); st.rerun()
-    st.divider()
-    st.markdown("### Historial decisiones Back")
+                        st.cache_data.clear(); st.success("Decision guardada."); st.rerun()
+    st.divider(); st.markdown("### Historial decisiones Back")
     if CSV_DECISIONES.exists():
-        dfd = pd.read_csv(CSV_DECISIONES)
+        dfd=pd.read_csv(CSV_DECISIONES)
         if not dfd.empty:
-            st.dataframe(dfd, use_container_width=True, hide_index=True)
-            st.markdown("---")
-            st.markdown("**🗑️ Eliminar registro del historial**")
-            opciones_elim = ["-- Seleccionar --"] + [
-                f"Fila {i}: {row.get('nombre_titulo', row.iloc[0])} — {row.get('universidad','')}"
-                for i, row in dfd.iterrows()
-            ]
-            sel_elim = st.selectbox("Selecciona el registro a eliminar:", opciones_elim, key="sel_elim_hist")
-            if sel_elim != "-- Seleccionar --":
-                fila_num = int(sel_elim.split(":")[0].replace("Fila","").strip())
-                if st.button(f"🗑️ Confirmar eliminacion", type="primary", key="btn_elim_hist"):
-                    dfd2 = dfd.drop(index=fila_num).reset_index(drop=True)
-                    ok = escribir_github("decisiones_back.csv", dfd2.to_csv(index=False), f"Eliminar fila {fila_num} historial Back")
-                    if ok:
-                        st.success("✅ Registro eliminado.")
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error("❌ No se pudo guardar.")
+            st.dataframe(dfd,use_container_width=True,hide_index=True)
+            op=["-- Seleccionar --"]+[f"Fila {i}: {r.get('nombre_titulo','')[:35]}" for i,r in dfd.iterrows()]
+            se=st.selectbox("Fila a eliminar:",op,key="sel_e")
+            if se!="-- Seleccionar --":
+                fn=int(se.split(":")[0].replace("Fila","").strip())
+                if st.button("Confirmar eliminacion",type="primary",key="btn_e"):
+                    d2=dfd.drop(index=fn).reset_index(drop=True)
+                    if escribir_github("decisiones_back.csv",d2.to_csv(index=False),f"Eliminar fila {fn}"):
+                        st.success("Eliminado."); st.cache_data.clear(); st.rerun()
         else: st.info("Sin decisiones.")
     else: st.info("Sin decisiones.")
-    st.divider()
-    st.markdown("### Editar decision existente")
+    st.divider(); st.markdown("### Editar decision existente")
     if CSV_DECISIONES.exists():
-        dfd_edit = pd.read_csv(CSV_DECISIONES)
-        if dfd_edit.empty:
-            st.info("No hay decisiones registradas para editar.")
-        else:
-            opciones_edit = ["-- Seleccionar --"] + [
-                f"Fila {i}: {row.get('nombre_titulo', '')} — {row.get('universidad', '')}"
-                for i, row in dfd_edit.iterrows()
-            ]
-            sel_edit = st.selectbox("Selecciona la decision a editar:", opciones_edit, key="edit_dec_sel")
-            if sel_edit != "-- Seleccionar --":
-                fila_edit = int(sel_edit.split(":")[0].replace("Fila","").strip())
-                row_e = dfd_edit.iloc[fila_edit]
-                with st.form(f"form_editar_{fila_edit}"):
-                    st.markdown(f"**Editando:** {row_e.get('nombre_titulo','')}")
-                    et = st.text_input("Titulo revisado", value=str(row_e.get("nombre_titulo","")))
-                    eu = st.text_input("Universidad", value=str(row_e.get("universidad","")))
-                    ea = st.radio("Aplica?", ["Si","No"], horizontal=True,
-                                  index=0 if str(row_e.get("decision_aplica","")).lower() in ["true","si","1"] else 1,
-                                  key="ea_edit")
-                    en = st.selectbox("Nivel", NIVELES,
-                                      index=NIVELES.index(row_e.get("nivel_confirmado","tecnico")) if row_e.get("nivel_confirmado","tecnico") in NIVELES else 0,
-                                      key="en_edit")
-                    em = st.text_area("Motivo / observacion", value=str(row_e.get("motivo","")), height=80, key="em_edit")
-                    es = st.form_submit_button("💾 Guardar cambios", use_container_width=True, type="primary")
-                if es and et.strip():
-                    dfd_edit.at[fila_edit, "nombre_titulo"]  = et.strip().upper()
-                    dfd_edit.at[fila_edit, "universidad"]    = eu.strip().upper()
-                    dfd_edit.at[fila_edit, "decision_aplica"] = (ea == "Si")
-                    dfd_edit.at[fila_edit, "nivel_confirmado"] = en
-                    dfd_edit.at[fila_edit, "motivo"]         = em
-                    ok = escribir_github("decisiones_back.csv", dfd_edit.to_csv(index=False), f"Editar fila {fila_edit} decision Back")
-                    if ok:
-                        st.success("✅ Decision actualizada correctamente.")
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error("❌ No se pudo guardar. Intenta de nuevo.")
-    else:
-        st.info("No hay decisiones registradas para editar.")
+        dfe=pd.read_csv(CSV_DECISIONES)
+        if not dfe.empty:
+            ope=["-- Seleccionar --"]+[f"Fila {i}: {r.get('nombre_titulo','')[:35]} — {r.get('universidad','')}" for i,r in dfe.iterrows()]
+            see=st.selectbox("Decision a editar:",ope,key="sel_ed")
+            if see!="-- Seleccionar --":
+                fe=int(see.split(":")[0].replace("Fila","").strip()); re=dfe.iloc[fe]
+                with st.form(f"fe_{fe}"):
+                    et=st.text_input("Titulo",value=str(re.get("nombre_titulo","")))
+                    eu=st.text_input("Universidad",value=str(re.get("universidad","")))
+                    ea=st.radio("Aplica?",["Si","No"],horizontal=True,index=0 if str(re.get("decision_aplica","")).lower() in ["true","1","si"] else 1,key="eaa")
+                    en=st.selectbox("Nivel",NIVELES,index=NIVELES.index(re.get("nivel_confirmado","tecnico")) if re.get("nivel_confirmado","tecnico") in NIVELES else 0,key="enn")
+                    er=st.text_input("Revisor",value=str(re.get("revisor","")),key="err")
+                    em=st.text_area("Observacion",value=str(re.get("motivo","")),height=80,key="emm")
+                    esb=st.form_submit_button("Guardar cambios",use_container_width=True,type="primary")
+                if esb and et.strip():
+                    dfe.at[fe,"nombre_titulo"]=et.strip().upper(); dfe.at[fe,"universidad"]=eu.strip().upper()
+                    dfe.at[fe,"decision_aplica"]=(ea=="Si"); dfe.at[fe,"nivel_confirmado"]=en
+                    dfe.at[fe,"revisor"]=er.strip(); dfe.at[fe,"motivo"]=em.strip().replace(",","")
+                    if escribir_github("decisiones_back.csv",dfe.to_csv(index=False),f"Editar fila {fe}"):
+                        st.success("Actualizado."); st.cache_data.clear(); st.rerun()
+        else: st.info("Sin decisiones para editar.")
+    else: st.info("Sin decisiones para editar.")
 
 elif pagina == "Cargar datos":
-    st.markdown("## Cargar datos")
-    st.info("Importa CSV con titulos de referencia.")
-    st.download_button("Descargar plantilla", pd.DataFrame([{"nombre_titulo":"ADMINISTRACION DE EMPRESAS","universidad":"UNIVERSIDAD NACIONAL","pais":"Colombia","aplica":"true","nivel":"universitario"}]).to_csv(index=False).encode("utf-8"),"plantilla.csv","text/csv")
-    archivo = st.file_uploader("CSV", type=["csv"])
-    if archivo:
-        try: dfn = pd.read_csv(archivo,dtype=str).fillna("")
-        except Exception as e: st.error(f"Error: {e}"); st.stop()
-        st.dataframe(dfn.head(10),use_container_width=True,hide_index=True)
-        falt = {"nombre_titulo","aplica","nivel"}-set(dfn.columns)
-        if falt: st.error(f"Faltan: {falt}")
-        elif st.button("Importar",use_container_width=True,type="primary"):
-            dfn["nombre_titulo"]=dfn["nombre_titulo"].str.upper().str.strip()
-            if "universidad" in dfn.columns: dfn["universidad"]=dfn["universidad"].str.upper().str.strip()
-            sub=["nombre_titulo","universidad"] if "universidad" in dfn.columns else ["nombre_titulo"]
-            dfn=dfn.drop_duplicates(subset=sub)
-            if CSV_TITULOS.exists():
-                dfb=pd.read_csv(CSV_TITULOS,dtype=str).fillna(""); dfb["nombre_titulo"]=dfb["nombre_titulo"].str.upper().str.strip()
-                dfc=pd.concat([dfb,dfn],ignore_index=True).drop_duplicates(subset=sub,keep="last")
-            else: dfc=dfn
-            dfc.to_csv(CSV_TITULOS,index=False); get_motor.clear()
-            st.success(f"{len(dfn)} registros. Base: {len(dfc)} titulos.")
+    st.title("Cargar datos")
+    arch=st.file_uploader("CSV de titulos",type=["csv"])
+    if arch:
+        try:
+            dfn=pd.read_csv(arch); st.dataframe(dfn.head(10),use_container_width=True)
+            if st.button("Confirmar carga",type="primary"):
+                dfn.columns=[c.lower().strip() for c in dfn.columns]
+                if "nombre_titulo" not in dfn.columns and "titulo" in dfn.columns: dfn["nombre_titulo"]=dfn["titulo"]
+                dfn["nombre_titulo"]=dfn["nombre_titulo"].astype(str).str.upper().str.strip()
+                dfn=dfn.drop_duplicates(subset=["nombre_titulo"])
+                if CSV_TITULOS.exists():
+                    db=pd.read_csv(CSV_TITULOS); dt=pd.concat([db,dfn],ignore_index=True).drop_duplicates(subset=["nombre_titulo"])
+                else: dt=dfn
+                dt.to_csv(CSV_TITULOS,index=False)
+                if escribir_github("titulos.csv",dt.to_csv(index=False),f"Carga: {len(dfn)} titulos"):
+                    get_motor.clear(); st.cache_data.clear(); st.success(f"{len(dfn)} titulos cargados.")
+        except Exception as e: st.error(f"Error: {e}")
 
 elif pagina == "Historial":
-    st.markdown("## Historial de solicitudes")
-    df_sol = leer_solicitudes()
-    if df_sol.empty: st.info("Sin solicitudes.")
+    st.title("Historial de validaciones")
+    dfh=leer_decisiones()
+    if dfh.empty: st.info("Sin decisiones registradas.")
     else:
-        busq = st.text_input("Buscar", placeholder="SENA")
-        if busq.strip():
-            m=(df_sol["nombre"].str.upper().str.contains(busq.upper(),na=False))|(df_sol["titulo"].str.upper().str.contains(busq.upper(),na=False))
-            df_sol=df_sol[m]
-        ef=st.columns(3)[0].selectbox("Estado",["Todos","PENDIENTE","APROBADA","RECHAZADA"])
-        if ef!="Todos": df_sol=df_sol[df_sol["estado"]==ef]
-        st.dataframe(df_sol[["id","fecha","nombre","titulo","universidad","estado"]],use_container_width=True,hide_index=True)
-        st.caption(f"{len(df_sol)} registros")
+        bus=st.text_input("Buscar titulo o universidad")
+        if bus.strip(): dfh=dfh[dfh.apply(lambda r: bus.upper() in str(r).upper(),axis=1)]
+        st.dataframe(dfh,use_container_width=True,hide_index=True); st.caption(f"Total: {len(dfh)}")
 
 elif pagina == "Dashboard":
-    st.markdown("### Dashboard")
-    cols=st.columns(4); df_sol=leer_solicitudes()
-    if CSV_TITULOS.exists():
-        dft=pd.read_csv(CSV_TITULOS)
-        ap=dft["aplica"].astype(str).str.lower().isin(["true","1","si","yes"]).sum() if "aplica" in dft.columns else 0
-        cols[0].metric("Titulos",len(dft)); cols[1].metric("Aplican",int(ap)); cols[2].metric("No aplican",len(dft)-int(ap))
-    if not df_sol.empty:
-        cols[3].metric("Solicitudes",len(df_sol)); st.divider(); sc=st.columns(3)
-        sc[0].metric("Pendientes",len(df_sol[df_sol["estado"]=="PENDIENTE"]))
-        sc[1].metric("Aprobadas",len(df_sol[df_sol["estado"]=="APROBADA"]))
-        sc[2].metric("Rechazadas",len(df_sol[df_sol["estado"]=="RECHAZADA"]))
-    if CSV_DECISIONES.exists():
-        dfd=pd.read_csv(CSV_DECISIONES); st.divider(); st.markdown("#### Decisiones del equipo Back")
-        if not dfd.empty and "nivel_confirmado" in dfd.columns:
-            c=dfd["nivel_confirmado"].value_counts().reset_index(); c.columns=["Nivel","Cantidad"]; st.dataframe(c,use_container_width=True,hide_index=True)
-    else: st.info("Sin datos de decisiones.")
+    st.title("Dashboard — ValidaTitulos")
+    dfd=leer_decisiones(); dfs=leer_solicitudes()
+    dfb=pd.read_csv(CSV_TITULOS) if CSV_TITULOS.exists() else pd.DataFrame()
+    c1,c2,c3,c4=st.columns(4)
+    td=len(dfd); an=int(dfd["decision_aplica"].astype(str).str.lower().isin(["true","1","si"]).sum()) if not dfd.empty and "decision_aplica" in dfd.columns else 0
+    c1.metric("Titulos en base",len(dfb)); c2.metric("Decisiones Back",td); c3.metric("Aplican",an); c4.metric("No aplican",td-an)
+    if an+td-an>0: st.progress(an/td if td>0 else 0, text=f"{round(an/td*100,1) if td>0 else 0}% aplican")
+    if not dfd.empty:
+        st.divider(); ca,cb=st.columns(2)
+        with ca:
+            st.markdown("**Titulos mas consultados**"); top=dfd["nombre_titulo"].value_counts().head(10).reset_index()
+            top.columns=["Titulo","Decisiones"]; st.dataframe(top,use_container_width=True,hide_index=True)
+        with cb:
+            st.markdown("**Decisiones por universidad**")
+            if "universidad" in dfd.columns:
+                unv=dfd["universidad"].value_counts().head(10).reset_index(); unv.columns=["Universidad","Decisiones"]
+                st.dataframe(unv,use_container_width=True,hide_index=True)
+        st.divider(); st.markdown("**Medicion del Back por revisor**")
+        if "revisor" in dfd.columns:
+            rv=dfd["revisor"].value_counts().reset_index(); rv.columns=["Revisor","Decisiones"]
+            st.dataframe(rv,use_container_width=True,hide_index=True)
+        st.divider(); st.markdown("**Decisiones por fecha**")
+        if "fecha" in dfd.columns:
+            dfd["fdia"]=pd.to_datetime(dfd["fecha"],errors="coerce").dt.date
+            pf=dfd.groupby("fdia").size().reset_index(name="Decisiones"); st.bar_chart(pf.set_index("fdia"))
+        st.divider(); st.markdown("**Decisiones por nivel**")
+        if "nivel_confirmado" in dfd.columns:
+            nv=dfd["nivel_confirmado"].value_counts().reset_index(); nv.columns=["Nivel","Cantidad"]
+            st.dataframe(nv,use_container_width=True,hide_index=True)
+    else: st.info("El dashboard se llenara cuando el Back procese solicitudes.")
+    if not dfs.empty:
+        st.divider(); est=dfs["estado"].value_counts().reset_index(); est.columns=["Estado","Cantidad"]
+        st.markdown("**Solicitudes por estado**"); st.dataframe(est,use_container_width=True,hide_index=True)
+        cn="nombre" if "nombre" in dfs.columns else "asesor" if "asesor" in dfs.columns else None
+        if cn:
+            st.markdown("**Asesores con mas solicitudes**")
+            ase=dfs[cn].value_counts().head(10).reset_index(); ase.columns=["Asesor","Solicitudes"]
+            st.dataframe(ase,use_container_width=True,hide_index=True)
