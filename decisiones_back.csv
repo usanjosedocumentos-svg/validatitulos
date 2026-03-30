@@ -1,5 +1,4 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
-TECNICO LABORAL POR COMPETENCIAS AUXILIAR ADMINISTRATIVO,CENFOCAT,Colombia,tecnico,True,CT,Aplica para administracion,2026-03-21,True,2.0
 TECNOLOGO EN INGENIERIA DE SISTEMAS,CENTRO COLOMBIANO DE ESTUDIOS PROFESIONALES,Colombia,tecnologo,True,CT,Aplica para ing de sistemas,2026-03-21,True,3.0
 TECNOLOGO GESTION ADMINISTRATIVA,SENA,Colombia,tecnologo,True,CT,Aplica para administracion,2026-03-21,True,3.0
 TECNOLOGO EN RADIOLOGIA E IMAGENES DIAGNOSTICAS,CORSALUD,Colombia,tecnologo,False,CT,Ingresa desde bachiller,2026-03-21,True,3.0
