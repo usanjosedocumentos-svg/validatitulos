@@ -115,9 +115,12 @@ if pagina == "Validar titulo":
             else:
                 tu = titulo_input.strip().upper(); uu = univ_input.strip().upper()
                 res = motor.validar(tu, uu if uu else None)
-                if res.decision == "APROBADA": st.success(f"APLICA — Nivel: {res.nivel_confirmado}")
-                elif res.decision == "RECHAZADA": st.error(f"NO APLICA — Nivel: {res.nivel_confirmado}")
-                else: st.warning("Titulo no encontrado. Puedes solicitar validacion al Back.")
+                if res.requiere_revision:
+                    st.warning("⚠️ Titulo no encontrado en la base. Puedes solicitar validacion al Back.")
+                elif res.aplica:
+                    st.success(f"✅ APLICA — Nivel: {res.nivel if res.nivel else ''}")
+                else:
+                    st.error(f"❌ NO APLICA — Nivel: {res.nivel if res.nivel else ''}")
                 df_dc = leer_decisiones()
                 if not df_dc.empty:
                     match = df_dc[df_dc["nombre_titulo"].str.upper().str.strip() == tu]
