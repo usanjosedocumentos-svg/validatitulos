@@ -1,5 +1,4 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
-TECNICO LABORAL EN ADMINISTRACION FINANCIERA Y AUDITORIA,INSTITUTO POLITECNICO,Colombia,tecnico,True,,Aplica para administracion y contaduria - CT,2026-03-21,True,2.0
 AUXILIAR EN SERVICIO FARMACEUTICOS,SINFRONTERAS,Colombia,tecnico,True,,Solo para Ing industrial - CT,2026-03-21,True,2.0
 TECNICO EN MANTENIMIENTO DE MOTORES DISEL,SENA,Colombia,tecnico,False,,Ingresa desde bachiller - CT,2026-03-21,True,2.0
 GESTION INTEGRADA DE LA CALIDAD MEDIO AMBIENTE,SENA,Colombia,tecnologo,False,True,No aplica,SENA,True,
