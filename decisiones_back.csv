@@ -1,5 +1,4 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
-REPUBLICA DE COLOMBIA EJERCITO NACIONAL CENTRO DE EDUCACION MILITAR,TECNOLOGO EN GESTION LOGICA CON ENFASIS EN ALMACENES,Colombia,tecnologo,False,CT,Ingresa desde bachiller,2026-03-21,True,3.0
 AUXILIAR EN SEGURIDAD Y SALUD EN EL TRABAJO,CEDENORTE,Colombia,tecnico,True,CT,Aplica para ing indsutrial,2026-03-21,True,2.0
 TECNOLOGO EN CONSTRUCCION,SENA,Colombia,tecnologo,False,CT,Ingresa desde bachiller,2026-03-21,True,3.0
 TECNICO PROFESIONAL EN OFIMATICA,SENA,Colombia,tecnico,True,CT,Aplica para ing de sistemas,2026-03-21,True,2.0
