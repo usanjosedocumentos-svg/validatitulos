@@ -91,9 +91,15 @@ class ValidadorCSV:
     def recargar(self) -> None:
         frames = []
         if CSV_TITULOS.exists():
-            frames.append(pd.read_csv(CSV_TITULOS))
+            frames.append(pd.read_csv(CSV_TITULOS, on_bad_lines='skip'))
         if CSV_DECISIONES.exists():
-            dec = pd.read_csv(CSV_DECISIONES)
+            try:
+                dec = pd.read_csv(CSV_DECISIONES, quoting=__import__('csv').QUOTE_ALL)
+            except Exception:
+                try:
+                    dec = pd.read_csv(CSV_DECISIONES)
+                except Exception:
+                    dec = pd.DataFrame()
             if "incorporar" in dec.columns:
                 dec = dec[dec["incorporar"].astype(str).str.lower() == "true"]
             if not dec.empty:
