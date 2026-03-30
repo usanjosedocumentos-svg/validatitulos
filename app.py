@@ -252,7 +252,11 @@ elif pagina == "Cargar datos":
     arch=st.file_uploader("CSV de titulos",type=["csv"])
     if arch:
         try:
-            dfn=pd.read_csv(arch); st.dataframe(dfn.head(10),use_container_width=True)
+            try:
+                dfn=pd.read_csv(arch); st.dataframe(dfn.head(10),use_container_width=True)
+            except UnicodeDecodeError:
+                arch.seek(0)
+                dfn=pd.read_csv(arch, encoding='latin-1'); st.dataframe(dfn.head(10),use_container_width=True)
             if st.button("Confirmar carga",type="primary"):
                 dfn.columns=[c.lower().strip() for c in dfn.columns]
                 if "nombre_titulo" not in dfn.columns and "titulo" in dfn.columns: dfn["nombre_titulo"]=dfn["titulo"]
