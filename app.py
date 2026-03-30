@@ -2,6 +2,10 @@
 app.py - ValidaTitulos - Interfaz Streamlit
 """
 import streamlit as st
+import io
+import csv as _csv
+import unicodedata
+import re
 import pandas as pd
 from pathlib import Path
 import uuid
@@ -9,12 +13,40 @@ import urllib.request, urllib.error, json, base64
 from datetime import datetime, timezone
 from validador import ValidadorCSV, CSV_TITULOS, CSV_DECISIONES
 
+def normalizar(texto: str) -> str:
+    texto = str(texto).lower().strip()
+    texto = unicodedata.normalize("NFD", texto)
+    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
+    texto = re.sub(r"[^a-z0-9\s]", " ", texto)
+    return re.sub(r"\s+", " ", texto).strip()
+
+def similitud_bigramas(a: str, b: str) -> float:
+    def bigs(s):
+        s = normalizar(s)
+        return set(s[i:i+2] for i in range(len(s)-1)) if len(s) > 1 else {s}
+    ba, bb = bigs(a), bigs(b)
+    if not ba or not bb: return 0.0
+    return 2 * len(ba & bb) / (len(ba) + len(bb))
+
+
 BASE_DIR        = Path(__file__).parent
 CSV_PENDIENTES  = BASE_DIR / "pendientes_back.csv"
 CSV_SOLICITUDES = BASE_DIR / "solicitudes_pendientes.csv"
 DIPLOMAS_DIR    = BASE_DIR / "diplomas"
 DIPLOMAS_DIR.mkdir(exist_ok=True)
 NIVELES = ["bachillerato","tecnico","tecnologo","universitario","especializacion","maestria","doctorado"]
+
+
+def df_a_csv_seguro(df: pd.DataFrame) -> str:
+    """Convierte DataFrame a CSV con QUOTE_ALL para proteger campos con comas."""
+    df = df.copy()
+    for col in df.select_dtypes(include="object").columns:
+        df[col] = (df[col].astype(str)
+                   .str.replace("\n", " ", regex=False)
+                   .str.replace("\r", " ", regex=False))
+    buf = io.StringIO()
+    df.to_csv(buf, index=False, quoting=_csv.QUOTE_ALL)
+    return buf.getvalue()
 
 def escribir_github(nombre_archivo, contenido, mensaje_commit):
     try:
@@ -62,14 +94,14 @@ def guardar_solicitud(nombre, titulo, universidad, pais, diploma_path, notas="")
         "estado":"PENDIENTE","diploma_path":str(diploma_path) if diploma_path else "","notas":notas,"motivo_rechazo":""}
     df = pd.concat([df, pd.DataFrame([nueva])], ignore_index=True)
     df.to_csv(CSV_SOLICITUDES, index=False)
-    escribir_github("solicitudes_pendientes.csv", df.to_csv(index=False), f"Add solicitud: {titulo.strip().upper()[:40]}")
+    escribir_github("solicitudes_pendientes.csv", df_a_csv_seguro(df), f"Add solicitud: {titulo.strip().upper()[:40]}")
     return nid
 
 def actualizar_estado_solicitud(sol_id, nuevo_estado):
     df = leer_solicitudes()
     df.loc[df["id"]==sol_id,"estado"] = nuevo_estado
     df.to_csv(CSV_SOLICITUDES, index=False)
-    escribir_github("solicitudes_pendientes.csv", df.to_csv(index=False), f"Update {sol_id}: {nuevo_estado}")
+    escribir_github("solicitudes_pendientes.csv", df_a_csv_seguro(df), f"Update {sol_id}: {nuevo_estado}")
 
 @st.cache_resource
 def get_motor(): return ValidadorCSV()
