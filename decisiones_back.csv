@@ -1,5 +1,4 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
-TECNOLOGO EN GESTION INTEGRADA DE LA CALIDAD,MEDIOAMBIENTE,"SEGURIDAD Y SALUD OCUPACIONAL""",SENA,Colombia,tecnologo,True,CT,Aplica para industrial,2026-03-21
 LICENCIADA EN ESPANOL Y LICENCIATURA,LA UNIVERSIDAD TECNOLOGICA DE CHOCO DIEGO LUIS CORDOBA,Colombia,universitario,False,CT,Ingresa como bachiller,2026-03-21,True,5.0
 TECNICO LABORAL POR COMPETENCIAS EN ATENCION AL AMBIENTE,CENTRA 2000 E.A.T,Colombia,tecnico,False,CT,Ingresa como bachiller,2026-03-21,True,2.0
 TECNOLOGO EN GESTION FINANCIERA,TECNOLOGICO DE ANTIOQUIA,Colombia,tecnologo,True,CT,Aplica para contaduria o administracion,2026-03-21,True,3.0
