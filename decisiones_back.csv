@@ -1,5 +1,4 @@
 nombre_titulo,universidad,pais,nivel_confirmado,decision_aplica,revisor,motivo,fecha,incorporar,semestre
-LICENCIADA EN ESPANOL Y LICENCIATURA,LA UNIVERSIDAD TECNOLOGICA DE CHOCO DIEGO LUIS CORDOBA,Colombia,universitario,False,CT,Ingresa como bachiller,2026-03-21,True,5.0
 TECNICO LABORAL POR COMPETENCIAS EN ATENCION AL AMBIENTE,CENTRA 2000 E.A.T,Colombia,tecnico,False,CT,Ingresa como bachiller,2026-03-21,True,2.0
 TECNOLOGO EN GESTION FINANCIERA,TECNOLOGICO DE ANTIOQUIA,Colombia,tecnologo,True,CT,Aplica para contaduria o administracion,2026-03-21,True,3.0
 TECNICO LABORAL POR COMPETENCIAS EN MANTENIMIENTO E INSTALACIONES ELECTRICAS INDUSTRIALES,POLITECNICO INDUSTRIAL NUEVA COLOMBIA,Colombia,tecnico,False,CT,Ingresa como bachiller,2026-03-21,True,2.0
@@ -9,7 +8,7 @@ TECNICO COMERCIALIZACION DE ALIMENTOS,SENA,Colombia,tecnico,False,CT,Ingresa com
 TECNICO LABORAL EN SEGURIDAD OCUPACIONAL,UNIROIENTE,Colombia,tecnico,True,CT,Aplica para ing industrial,2026-03-21,True,2.0
 TECNICO EN SISTEMAS AGROPECUARIOS ECOLOGICOS,SENA,Colombia,tecnico,False,CT,Ingresa como bachiller,2026-03-21,True,2.0
 TECNOLOGO EN MANTENIMIENTO DE EQUIPO BIOMEDICO,SENA,Colombia,tecnologo,False,CT,Ingresa como bachiller,2026-03-21,True,3.0
-TECNOLOGO EN PRODUCCION AGROPECUARIA ECOLOGICA,SENA,Colombia,tecnologo,False,CT,Ingresa como bachiller,2026-03-21,true,3.0
-TÂÂÂÂCNICO LABORAL POR COMPETENCIAS DEL PROGRAMA AUXILIAR ADMINISTRATIVO Y DE TALENTO HUMANO,EDUCACION FUTURO,Colombia,tecnico,True,,Aplica para administracion,2026-03-21,true,2
-TECNICO EN MANTENIMIENTO DE AUTOMATISMOS INDUSTRIALES,SENA,Colombia,tecnico,False,CT,Ingresa como bachiller,2026-03-21,true,2
-"TECNOLOGO EN GESTION INTEGRADA DE LA CALIDAD, MEDIO AMBIENTE, SEGURIDAD Y SALUD OCUPACIONAL",SENA,Colombia,tecnologo,True,Leidy Julieth Garca Fajardo,"No aplica para ingeniera de sistemas, este titulo aplica para ingresar a ingeniera industrial",2026-03-25,true,3
+TECNOLOGO EN PRODUCCION AGROPECUARIA ECOLOGICA,SENA,Colombia,tecnologo,False,CT,Ingresa como bachiller,2026-03-21,True,3.0
+TÂÂÂÂCNICO LABORAL POR COMPETENCIAS DEL PROGRAMA AUXILIAR ADMINISTRATIVO Y DE TALENTO HUMANO,EDUCACION FUTURO,Colombia,tecnico,True,,Aplica para administracion,2026-03-21,True,2.0
+TECNICO EN MANTENIMIENTO DE AUTOMATISMOS INDUSTRIALES,SENA,Colombia,tecnico,False,CT,Ingresa como bachiller,2026-03-21,True,2.0
+"TECNOLOGO EN GESTION INTEGRADA DE LA CALIDAD, MEDIO AMBIENTE, SEGURIDAD Y SALUD OCUPACIONAL",SENA,Colombia,tecnologo,True,Leidy Julieth Garca Fajardo,"No aplica para ingeniera de sistemas, este titulo aplica para ingresar a ingeniera industrial",2026-03-25,True,3.0
