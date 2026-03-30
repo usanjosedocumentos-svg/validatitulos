@@ -217,7 +217,8 @@ elif pagina == "Revision Back":
                 cd,cf=st.columns([1,1])
                 with cd:
                     st.markdown("**Documento adjunto**")
-                    dp=DIPLOMAS_DIR/row["diploma_path"] if row.get("diploma_path") else None
+                    _dp_val=str(row.get("diploma_path","")).strip()
+                    dp=DIPLOMAS_DIR/_dp_val if _dp_val and _dp_val.lower() not in ["nan","none",""] else None
                     if dp and dp.exists():
                         if dp.suffix.lower() in [".jpg",".jpeg",".png"]: st.image(str(dp),use_container_width=True)
                         else:
