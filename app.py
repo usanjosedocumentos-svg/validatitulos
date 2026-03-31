@@ -157,15 +157,17 @@ if pagina == "Validar titulo":
                         if not match.empty:
                             rm = match.iloc[-1]
                             mot = str(rm.get("motivo","")).strip(); rev = str(rm.get("revisor","")).strip()
-                            ap  = str(rm.get("decision_aplica","")).strip(); niv = str(rm.get("nivel_confirmado","")).strip()
-                            st.markdown("---"); st.markdown("### Informacion del Back Office")
-                            ca,cb = st.columns(2)
-                            ca.markdown(f"**Aplica:** {'SI' if ap.lower() in ['true','1','si'] else 'NO'}")
-                            cb.markdown(f"**Nivel:** {niv}")
-                            if mot and mot.lower() not in ["nan","none",""]:
+                            ap  = str(rm.get("decision_aplica","")).strip()
+                            niv = str(rm.get("nivel_confirmado","")).strip()
+                            ap_bool = ap.lower() in ["true","1","si"]
+                            if ap_bool and mot and mot.lower() not in ["nan","none",""]:
+                                st.markdown("---"); st.markdown("### Informacion del Back Office")
+                                ca,cb = st.columns(2)
+                                ca.markdown(f"**Aplica:** SI")
+                                cb.markdown(f"**Nivel:** {niv}")
                                 st.info(f"💬 Observacion del Back Office: {mot}")
-                            if rev and rev.lower() not in ["nan","none",""]:
-                                st.caption(f"Autorizado por: {rev}")
+                                if rev and rev.lower() not in ["nan","none",""]:
+                                    st.caption(f"Autorizado por: {rev}")
                 else:
                     st.error(f"❌ NO APLICA — Nivel: {res.nivel if res.nivel else ''}")
                     df_dc = leer_decisiones()
@@ -174,15 +176,17 @@ if pagina == "Validar titulo":
                         if not match.empty:
                             rm = match.iloc[-1]
                             mot = str(rm.get("motivo","")).strip(); rev = str(rm.get("revisor","")).strip()
+                            ap  = str(rm.get("decision_aplica","")).strip()
                             niv = str(rm.get("nivel_confirmado","")).strip()
-                            st.markdown("---"); st.markdown("### Informacion del Back Office")
-                            ca,cb = st.columns(2)
-                            ca.markdown(f"**Aplica:** NO")
-                            cb.markdown(f"**Nivel:** {niv}")
-                            if mot and mot.lower() not in ["nan","none",""]:
+                            ap_bool = ap.lower() in ["true","1","si"]
+                            if not ap_bool and mot and mot.lower() not in ["nan","none",""]:
+                                st.markdown("---"); st.markdown("### Informacion del Back Office")
+                                ca,cb = st.columns(2)
+                                ca.markdown(f"**Aplica:** NO")
+                                cb.markdown(f"**Nivel:** {niv}")
                                 st.info(f"💬 Observacion del Back Office: {mot}")
-                            if rev and rev.lower() not in ["nan","none",""]:
-                                st.caption(f"Autorizado por: {rev}")
+                                if rev and rev.lower() not in ["nan","none",""]:
+                                    st.caption(f"Autorizado por: {rev}")
     with tab2:
         st.markdown("### Solicitar validacion al Back")
         with st.form("form_sol"):
