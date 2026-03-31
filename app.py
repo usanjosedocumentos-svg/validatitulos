@@ -126,105 +126,98 @@ with st.sidebar:
     if df_d.empty:
         st.info("No hay decisiones registradas aun.")
     else:
-        # ── Calculos ──────────────────────────────────────────
-        total = len(df_d)
         aplica_col = "decision_aplica" if "decision_aplica" in df_d.columns else "aplica"
-        df_d["_aplica_bool"] = df_d[aplica_col].astype(str).str.lower().isin(["true","1","si"])
-        aplican   = int(df_d["_aplica_bool"].sum())
+        nivel_col  = "nivel_confirmado" if "nivel_confirmado" in df_d.columns else "nivel"
+        df_d["_ap"]  = df_d[aplica_col].astype(str).str.lower().isin(["true","1","si"])
+        df_d["_niv"] = df_d[nivel_col].astype(str).str.lower().str.strip()
+        total      = len(df_d)
+        aplican    = int(df_d["_ap"].sum())
         no_aplican = total - aplican
-        nivel_col = "nivel_confirmado" if "nivel_confirmado" in df_d.columns else "nivel"
-        df_d["_nivel"] = df_d[nivel_col].astype(str).str.lower().str.strip()
-        tecnicos   = int(df_d["_nivel"].str.contains("tecnico", na=False).sum())
-        tecnologos = int(df_d["_nivel"].str.contains("tecnologo", na=False).sum())
-        univ       = int(df_d["_nivel"].str.contains("universitario", na=False).sum())
-        bach       = int(df_d["_nivel"].str.contains("bachillerato", na=False).sum())
-        otros_n    = total - tecnicos - tecnologos - univ - bach
-        tec_ap   = int(df_d[df_d["_nivel"].str.contains("tecnico",na=False)]["_aplica_bool"].sum())
-        tec_no   = tecnicos - tec_ap
-        tlog_ap  = int(df_d[df_d["_nivel"].str.contains("tecnologo",na=False)]["_aplica_bool"].sum())
-        tlog_no  = tecnologos - tlog_ap
+        tecnicos   = int(df_d["_niv"].str.contains("tecnico",  na=False).sum())
+        tecnologos = int(df_d["_niv"].str.contains("tecnologo", na=False).sum())
+        univ       = int(df_d["_niv"].str.contains("universitario", na=False).sum())
+        bach       = int(df_d["_niv"].str.contains("bachillerato", na=False).sum())
+        tec_ap     = int(df_d[df_d["_niv"].str.contains("tecnico", na=False)]["_ap"].sum())
+        tec_no     = tecnicos  - tec_ap
+        tlog_ap    = int(df_d[df_d["_niv"].str.contains("tecnologo", na=False)]["_ap"].sum())
+        tlog_no    = tecnologos - tlog_ap
+        pct_ap     = round(aplican/total*100, 1) if total else 0
+        pct_no     = round(no_aplican/total*100, 1) if total else 0
 
-        # ── Métricas principales ──────────────────────────────
         st.markdown("### 📊 Resumen General")
         m1,m2,m3,m4 = st.columns(4)
-        m1.metric("📋 Total Títulos", total)
-        m2.metric("✅ Aplican", aplican, delta=f"{round(aplican/total*100,1)}%")
-        m3.metric("❌ No Aplican", no_aplican, delta=f"-{round(no_aplican/total*100,1)}%", delta_color="inverse")
-        m4.metric("🎓 Técnicos + Tecnólogos", tecnicos + tecnologos)
-
+        m1.metric("📋 Total Títulos",          total)
+        m2.metric("✅ Aplican",                aplican,    delta=f"{pct_ap}%")
+        m3.metric("❌ No Aplican",             no_aplican, delta=f"-{pct_no}%", delta_color="inverse")
+        m4.metric("🎓 Técnicos + Tecnólogos",  tecnicos + tecnologos)
         st.markdown("---")
 
-        # ── Gráficas ──────────────────────────────────────────
-        import json
         col1, col2 = st.columns(2)
-
         with col1:
             st.markdown("#### 🥧 Distribución Aplica / No Aplica")
-            pie_data = {"labels":["✅ Aplica","❌ No Aplica"],"values":[aplican,no_aplican],"colors":["#22c55e","#ef4444"]}
-            st.components.v1.html(f"""
-<div style="background:#1e293b;border-radius:12px;padding:16px">
-<canvas id="pie1" width="320" height="260"></canvas>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-new Chart(document.getElementById('pie1'),{{
-  type:'doughnut',
-  data:{{labels:{json.dumps(pie_data["labels"])},datasets:[{{data:{json.dumps(pie_data["values"])},backgroundColor:{json.dumps(pie_data["colors"])},borderWidth:2,borderColor:'#0f172a'}}]}},
-  options:{{plugins:{{legend:{{position:'bottom',labels:{{color:'#f1f5f9',font:{{size:13}}}}}},tooltip:{{callbacks:{{label:function(c){{return c.label+': '+c.raw+' ('+Math.round(c.raw/{total}*100)+'%)'}}}}}}}},cutout:'55%'}}
-}});
-</script>""", height=300)
+            html_pie1 = (
+                "<div style='background:#1e293b;border-radius:12px;padding:16px'>"
+                "<canvas id='pie1' width='320' height='260'></canvas></div>"
+                "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'></script>"
+                "<script>new Chart(document.getElementById('pie1'),{"
+                "type:'doughnut',"
+                "data:{labels:['✅ Aplica','❌ No Aplica'],"
+                "datasets:[{data:[" + str(aplican) + "," + str(no_aplican) + "],"
+                "backgroundColor:['#22c55e','#ef4444'],borderWidth:2,borderColor:'#0f172a'}]},"
+                "options:{plugins:{legend:{position:'bottom',labels:{color:'#f1f5f9',font:{size:13}}},"
+                "tooltip:{callbacks:{label:function(c){return c.label+': '+c.raw+' ('+Math.round(c.raw/" + str(total) + "*100)+'%)'}}}},"
+                "cutout:'55%'}});</script>"
+            )
+            st.components.v1.html(html_pie1, height=300)
 
         with col2:
             st.markdown("#### 📊 Títulos por Nivel")
-            bar_data = {{"labels":["Técnico","Tecnólogo","Universitario","Bachillerato"],"values":[tecnicos,tecnologos,univ,bach],"colors":["#3b82f6","#8b5cf6","#f59e0b","#6b7280"]}}
-            st.components.v1.html(f"""
-<div style="background:#1e293b;border-radius:12px;padding:16px">
-<canvas id="bar1" width="320" height="260"></canvas>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-new Chart(document.getElementById('bar1'),{{
-  type:'bar',
-  data:{{labels:{json.dumps(["Técnico","Tecnólogo","Universitario","Bachillerato"])},datasets:[{{label:'Cantidad',data:{json.dumps([tecnicos,tecnologos,univ,bach])},backgroundColor:{json.dumps(["#3b82f6","#8b5cf6","#f59e0b","#6b7280"])},borderRadius:6,borderWidth:0}}]}},
-  options:{{plugins:{{legend:{{display:false}},tooltip:{{callbacks:{{label:function(c){{return 'Títulos: '+c.raw}}}}}}}},scales:{{x:{{ticks:{{color:'#f1f5f9'}},grid:{{color:'#334155'}}}},y:{{ticks:{{color:'#f1f5f9',stepSize:5}},grid:{{color:'#334155'}},beginAtZero:true}}}}}}
-}});
-</script>""", height=300)
+            html_bar1 = (
+                "<div style='background:#1e293b;border-radius:12px;padding:16px'>"
+                "<canvas id='bar1' width='320' height='260'></canvas></div>"
+                "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'></script>"
+                "<script>new Chart(document.getElementById('bar1'),{"
+                "type:'bar',"
+                "data:{labels:['T\u00e9cnico','Tecn\u00f3logo','Universitario','Bachillerato'],"
+                "datasets:[{label:'Cantidad',data:[" + str(tecnicos) + "," + str(tecnologos) + "," + str(univ) + "," + str(bach) + "],"
+                "backgroundColor:['#3b82f6','#8b5cf6','#f59e0b','#6b7280'],borderRadius:6,borderWidth:0}]},"
+                "options:{plugins:{legend:{display:false}},"
+                "scales:{x:{ticks:{color:'#f1f5f9'},grid:{color:'#334155'}},"
+                "y:{ticks:{color:'#f1f5f9',stepSize:5},grid:{color:'#334155'},beginAtZero:true}}}});</script>"
+            )
+            st.components.v1.html(html_bar1, height=300)
 
         st.markdown("---")
-        st.markdown("#### 🔵 Técnicos vs Tecnólogos — Detalle Aplica / No Aplica")
+        st.markdown("#### Técnicos vs Tecnólogos — Detalle Aplica / No Aplica")
         col3, col4 = st.columns(2)
-
         with col3:
-            st.markdown("**🔵 Técnicos**")
-            st.components.v1.html(f"""
-<div style="background:#1e293b;border-radius:12px;padding:12px;text-align:center">
-<canvas id="pie_tec" width="260" height="220"></canvas>
-<p style="color:#94a3b8;margin-top:4px;font-size:13px">Total: {tecnicos} técnicos</p>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-new Chart(document.getElementById('pie_tec'),{{
-  type:'doughnut',
-  data:{{labels:['✅ Aplica','❌ No Aplica'],datasets:[{{data:[{tec_ap},{tec_no}],backgroundColor:['#22c55e','#ef4444'],borderWidth:2,borderColor:'#0f172a'}}]}},
-  options:{{plugins:{{legend:{{position:'bottom',labels:{{color:'#f1f5f9',font:{{size:12}}}}}}}},cutout:'50%'}}
-}});
-</script>""", height=270)
-
+            st.markdown("**🔵 Técnicos — Total: " + str(tecnicos) + "**")
+            html_tec = (
+                "<div style='background:#1e293b;border-radius:12px;padding:12px;text-align:center'>"
+                "<canvas id='pie_tec' width='260' height='220'></canvas></div>"
+                "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'></script>"
+                "<script>new Chart(document.getElementById('pie_tec'),{"
+                "type:'doughnut',"
+                "data:{labels:['✅ Aplica','❌ No Aplica'],"
+                "datasets:[{data:[" + str(tec_ap) + "," + str(tec_no) + "],"
+                "backgroundColor:['#22c55e','#ef4444'],borderWidth:2,borderColor:'#0f172a'}]},"
+                "options:{plugins:{legend:{position:'bottom',labels:{color:'#f1f5f9',font:{size:12}}}},cutout:'50%'}});</script>"
+            )
+            st.components.v1.html(html_tec, height=270)
         with col4:
-            st.markdown("**🟣 Tecnólogos**")
-            st.components.v1.html(f"""
-<div style="background:#1e293b;border-radius:12px;padding:12px;text-align:center">
-<canvas id="pie_tlog" width="260" height="220"></canvas>
-<p style="color:#94a3b8;margin-top:4px;font-size:13px">Total: {tecnologos} tecnólogos</p>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-new Chart(document.getElementById('pie_tlog'),{{
-  type:'doughnut',
-  data:{{labels:['✅ Aplica','❌ No Aplica'],datasets:[{{data:[{tlog_ap},{tlog_no}],backgroundColor:['#8b5cf6','#ef4444'],borderWidth:2,borderColor:'#0f172a'}}]}},
-  options:{{plugins:{{legend:{{position:'bottom',labels:{{color:'#f1f5f9',font:{{size:12}}}}}}}},cutout:'50%'}}
-}});
-</script>""", height=270)
+            st.markdown("**🟣 Tecnólogos — Total: " + str(tecnologos) + "**")
+            html_tlog = (
+                "<div style='background:#1e293b;border-radius:12px;padding:12px;text-align:center'>"
+                "<canvas id='pie_tlog' width='260' height='220'></canvas></div>"
+                "<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'></script>"
+                "<script>new Chart(document.getElementById('pie_tlog'),{"
+                "type:'doughnut',"
+                "data:{labels:['✅ Aplica','❌ No Aplica'],"
+                "datasets:[{data:[" + str(tlog_ap) + "," + str(tlog_no) + "],"
+                "backgroundColor:['#8b5cf6','#ef4444'],borderWidth:2,borderColor:'#0f172a'}]},"
+                "options:{plugins:{legend:{position:'bottom',labels:{color:'#f1f5f9',font:{size:12}}}},cutout:'50%'}});</script>"
+            )
+            st.components.v1.html(html_tlog, height=270)
 
     if st.button("Recargar base", use_container_width=True):
         get_motor.clear(); st.cache_data.clear(); st.rerun()
