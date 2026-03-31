@@ -160,30 +160,11 @@ class ValidadorCSV:
                 semestre=(int(float(fila["semestre"])) if "semestre" in fila.index and pd.notna(fila["semestre"]) and str(fila["semestre"]).strip() not in ["", "nan", "NaN"] else SEMESTRE_POR_NIVEL.get(nivel)),
                 confianza=0.98, requiere_revision=False, metodo="exacto",
                 match=str(fila["nombre_titulo"]), razon="Coincidencia exacta en base historica")
-        fuzzy_hits = self._fuzzy(tn)
-        nivel_kw = _inferir_nivel(tn)
-        if fuzzy_hits:
-            mejor_fila, mejor_sim = fuzzy_hits[0]
-            bonus = 0.15 if (nivel_kw and nivel_kw == str(mejor_fila["nivel"])) else (0.10 if nivel_kw else 0.0)
-            confianza = min(mejor_sim * 0.85 + bonus, 0.94)
-            nivel_final = nivel_kw or str(mejor_fila["nivel"])
-            return Resultado(
-                aplica=bool(mejor_fila["aplica"]), nivel=nivel_final,
-                semestre=SEMESTRE_POR_NIVEL.get(nivel_final),
-                confianza=round(confianza, 3),
-                requiere_revision=confianza < UMBRAL_ESCALAR,
-                metodo="fuzzy", match=str(mejor_fila["nombre_titulo"]),
-                razon="Similitud con " + str(mejor_fila["nombre_titulo"]))
-        if nivel_kw:
-            return Resultado(
-                aplica=False, nivel=nivel_kw,
-                semestre=SEMESTRE_POR_NIVEL.get(nivel_kw),
-                confianza=0.50, requiere_revision=True, metodo="keywords",
-                razon="Titulo no encontrado en base - nivel inferido por palabras clave")
+        # Sin coincidencia exacta -> no encontrado
         return Resultado(
             aplica=False, nivel=None, semestre=None, confianza=0.0,
             requiere_revision=True, metodo="desconocido",
-            razon="Sin informacion suficiente - revisar con equipo Back")
+            razon="Titulo no encontrado en base - solicitar validacion al Back")
 
     def guardar_decision(self, titulo, universidad, pais, aplica, nivel,
                          revisor="", motivo="", incorporar=True) -> None:
