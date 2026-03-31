@@ -155,10 +155,10 @@ class ValidadorCSV:
                 razon="Similitud con " + str(mejor_fila["nombre_titulo"]))
         if nivel_kw:
             return Resultado(
-                aplica=nivel_kw not in ("bachillerato",), nivel=nivel_kw,
+                aplica=False, nivel=nivel_kw,
                 semestre=SEMESTRE_POR_NIVEL.get(nivel_kw),
                 confianza=0.50, requiere_revision=True, metodo="keywords",
-                razon="Inferido por palabras clave")
+                razon="Titulo no encontrado en base - nivel inferido por palabras clave")
         return Resultado(
             aplica=False, nivel=None, semestre=None, confianza=0.0,
             requiere_revision=True, metodo="desconocido",
