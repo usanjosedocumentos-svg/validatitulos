@@ -131,6 +131,24 @@ class ValidadorCSV:
             return Resultado(aplica=False, nivel=None, semestre=None, confianza=0.92,
                              requiere_revision=False, metodo="exacto",
                              razon="Patron de exclusion")
+        # Prioridad maxima: decision exacta del Back Office
+        if CSV_DECISIONES.exists():
+            try:
+                dec = pd.read_csv(CSV_DECISIONES)
+                dec_norm = dec["nombre_titulo"].astype(str).apply(_norm)
+                dec_match = dec[dec_norm == tn]
+                if not dec_match.empty:
+                    dm = dec_match.iloc[-1]
+                    aplica_back = str(dm.get("decision_aplica","")).strip().lower() in ["true","1","si"]
+                    nivel_back = str(dm.get("nivel_confirmado","")).strip()
+                    return Resultado(
+                        aplica=aplica_back, nivel=nivel_back,
+                        semestre=SEMESTRE_POR_NIVEL.get(nivel_back),
+                        confianza=0.99, requiere_revision=False, metodo="back_exacto",
+                        match=str(dm.get("nombre_titulo","")),
+                        razon="Decision exacta del Back Office")
+            except Exception:
+                pass
         fila = self._exacta(tn)
         if fila is not None:
             nivel = str(fila["nivel"])
