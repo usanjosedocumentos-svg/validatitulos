@@ -134,7 +134,10 @@ class ValidadorCSV:
         # Prioridad maxima: decision exacta del Back Office
         if CSV_DECISIONES.exists():
             try:
-                dec = pd.read_csv(CSV_DECISIONES)
+                try:
+                    dec = pd.read_csv(CSV_DECISIONES, quoting=__import__('csv').QUOTE_ALL)
+                except Exception:
+                    dec = pd.read_csv(CSV_DECISIONES)
                 dec_norm = dec["nombre_titulo"].astype(str).apply(_norm)
                 dec_match = dec[dec_norm == tn]
                 if not dec_match.empty:
