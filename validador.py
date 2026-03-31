@@ -123,7 +123,7 @@ class ValidadorCSV:
             return []
         nombres = self._df["_norm"].tolist()
         hits = rfprocess.extract(titulo_norm, nombres, scorer=fuzz.token_sort_ratio, limit=5)
-        return [(self._df.iloc[idx], score / 100) for _, score, idx in hits if score >= 80]
+        return [(self._df.iloc[idx], score / 100) for _, score, idx in hits if score >= 85]
 
     def validar(self, titulo: str, universidad: str = "", pais: str = "") -> Resultado:
         tn = _norm(titulo)
