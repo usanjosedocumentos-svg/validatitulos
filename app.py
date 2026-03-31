@@ -151,24 +151,38 @@ if pagina == "Validar titulo":
                     st.warning("⚠️ Titulo no encontrado en la base. Puedes solicitar validacion al Back.")
                 elif res.aplica:
                     st.success(f"✅ APLICA — Nivel: {res.nivel if res.nivel else ''}")
+                    df_dc = leer_decisiones()
+                    if not df_dc.empty:
+                        match = df_dc[df_dc["nombre_titulo"].str.upper().str.strip() == tu]
+                        if not match.empty:
+                            rm = match.iloc[-1]
+                            mot = str(rm.get("motivo","")).strip(); rev = str(rm.get("revisor","")).strip()
+                            ap  = str(rm.get("decision_aplica","")).strip(); niv = str(rm.get("nivel_confirmado","")).strip()
+                            st.markdown("---"); st.markdown("### Informacion del Back Office")
+                            ca,cb = st.columns(2)
+                            ca.markdown(f"**Aplica:** {'SI' if ap.lower() in ['true','1','si'] else 'NO'}")
+                            cb.markdown(f"**Nivel:** {niv}")
+                            if mot and mot.lower() not in ["nan","none",""]:
+                                st.info(f"💬 Observacion del Back Office: {mot}")
+                            if rev and rev.lower() not in ["nan","none",""]:
+                                st.caption(f"Autorizado por: {rev}")
                 else:
                     st.error(f"❌ NO APLICA — Nivel: {res.nivel if res.nivel else ''}")
-                df_dc = leer_decisiones()
-                if not df_dc.empty:
-                    match = df_dc[df_dc["nombre_titulo"].str.upper().str.strip() == tu]
-                    if match.empty: match = df_dc[df_dc["nombre_titulo"].str.upper().str.contains(tu[:15], na=False)]
-                    if not match.empty:
-                        rm = match.iloc[-1]
-                        mot = str(rm.get("motivo","")).strip(); rev = str(rm.get("revisor","")).strip()
-                        ap  = str(rm.get("decision_aplica","")).strip(); niv = str(rm.get("nivel_confirmado","")).strip()
-                        st.markdown("---"); st.markdown("### Informacion del Back Office")
-                        ca,cb = st.columns(2)
-                        ca.markdown(f"**Aplica:** {'SI' if ap.lower() in ['true','1','si'] else 'NO'}")
-                        cb.markdown(f"**Nivel:** {niv}")
-                        if mot and mot.lower() not in ["nan","none",""]:
-                            st.info(f"Observacion del Back: {mot}")
-                        if rev and rev.lower() not in ["nan","none",""]:
-                            st.caption(f"Autorizado por: {rev}")
+                    df_dc = leer_decisiones()
+                    if not df_dc.empty:
+                        match = df_dc[df_dc["nombre_titulo"].str.upper().str.strip() == tu]
+                        if not match.empty:
+                            rm = match.iloc[-1]
+                            mot = str(rm.get("motivo","")).strip(); rev = str(rm.get("revisor","")).strip()
+                            niv = str(rm.get("nivel_confirmado","")).strip()
+                            st.markdown("---"); st.markdown("### Informacion del Back Office")
+                            ca,cb = st.columns(2)
+                            ca.markdown(f"**Aplica:** NO")
+                            cb.markdown(f"**Nivel:** {niv}")
+                            if mot and mot.lower() not in ["nan","none",""]:
+                                st.info(f"💬 Observacion del Back Office: {mot}")
+                            if rev and rev.lower() not in ["nan","none",""]:
+                                st.caption(f"Autorizado por: {rev}")
     with tab2:
         st.markdown("### Solicitar validacion al Back")
         with st.form("form_sol"):
