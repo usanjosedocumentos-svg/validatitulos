@@ -20,7 +20,7 @@ CSV_TITULOS    = Path(__file__).parent / "titulos.csv"
 CSV_DECISIONES = Path(__file__).parent / "decisiones_back.csv"
 
 UMBRAL_AUTO    = 0.82
-UMBRAL_ESCALAR = 0.60
+UMBRAL_ESCALAR = 0.75
 
 KEYWORDS_NIVEL = {
     "doctorado":       ["doctorado", "phd", "ph.d", "doctor en"],
@@ -123,7 +123,7 @@ class ValidadorCSV:
             return []
         nombres = self._df["_norm"].tolist()
         hits = rfprocess.extract(titulo_norm, nombres, scorer=fuzz.token_sort_ratio, limit=5)
-        return [(self._df.iloc[idx], score / 100) for _, score, idx in hits if score >= 55]
+        return [(self._df.iloc[idx], score / 100) for _, score, idx in hits if score >= 80]
 
     def validar(self, titulo: str, universidad: str = "", pais: str = "") -> Resultado:
         tn = _norm(titulo)
