@@ -239,7 +239,32 @@ if pagina == "Validar titulo":
                 tu = titulo_input.strip().upper(); uu = univ_input.strip().upper()
                 res = motor.validar(tu, uu if uu else None)
                 if res is None or res.requiere_revision:
-                    st.warning("⚠️ Titulo no encontrado en la base. Puedes solicitar validacion al Back.")
+                    # Buscar titulos relacionados por palabras clave
+                    palabras = [p for p in tu.split() if len(p) > 3]
+                    df_dc2 = leer_decisiones()
+                    relacionados = []
+                    if not df_dc2.empty and palabras:
+                        for _, fila in df_dc2.iterrows():
+                            nombre = str(fila.get("nombre_titulo","")).upper()
+                            if any(p in nombre for p in palabras):
+                                relacionados.append(fila)
+                    if relacionados:
+                        st.warning("⚠️ Titulo no encontrado exactamente. Títulos relacionados en la base:")
+                        for r in relacionados[:8]:
+                            ap = str(r.get("decision_aplica","")).lower() in ["true","1","si"]
+                            niv = str(r.get("nivel_confirmado","")).strip()
+                            nom = str(r.get("nombre_titulo","")).strip()
+                            mot = str(r.get("motivo","")).strip()
+                            rev = str(r.get("revisor","")).strip()
+                            icono = "✅" if ap else "❌"
+                            with st.expander(f"{icono} {nom} — {niv}"):
+                                st.markdown(f"**Aplica:** {'SI' if ap else 'NO'} | **Nivel:** {niv}")
+                                if mot and mot.lower() not in ["nan","none",""]:
+                                    st.info(f"💬 {mot}")
+                                if rev and rev.lower() not in ["nan","none",""]:
+                                    st.caption(f"Autorizado por: {rev}")
+                    else:
+                        st.warning("⚠️ Titulo no encontrado en la base. Puedes solicitar validacion al Back.")
                 elif res.aplica:
                     st.success(f"✅ APLICA — Nivel: {res.nivel if res.nivel else ''}")
                     df_dc = leer_decisiones()
