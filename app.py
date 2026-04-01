@@ -31,6 +31,7 @@ def similitud_bigramas(a: str, b: str) -> float:
 
 BASE_DIR        = Path(__file__).parent
 CSV_PENDIENTES  = BASE_DIR / "pendientes_back.csv"
+CSV_CONTADOR    = BASE_DIR / "consultas_contador.csv"
 CSV_SOLICITUDES = BASE_DIR / "solicitudes_pendientes.csv"
 DIPLOMAS_DIR    = BASE_DIR / "diplomas"
 DIPLOMAS_DIR.mkdir(exist_ok=True)
@@ -47,6 +48,29 @@ def df_a_csv_seguro(df: pd.DataFrame) -> str:
     buf = io.StringIO()
     df.to_csv(buf, index=False, quoting=_csv.QUOTE_ALL)
     return buf.getvalue()
+
+@st.cache_data(ttl=60)
+def leer_contador():
+    try:
+        if CSV_CONTADOR.exists():
+            return pd.read_csv(CSV_CONTADOR)
+    except: pass
+    return pd.DataFrame(columns=["titulo","consultas"])
+
+def registrar_consulta(titulo):
+    try:
+        df = leer_contador()
+        titulo = str(titulo).strip().upper()
+        if not titulo: return
+        if not df.empty and titulo in df["titulo"].values:
+            df.loc[df["titulo"]==titulo, "consultas"] += 1
+        else:
+            df = pd.concat([df, pd.DataFrame([{"titulo":titulo,"consultas":1}])], ignore_index=True)
+        df.to_csv(CSV_CONTADOR, index=False)
+        escribir_github("consultas_contador.csv", df_a_csv_seguro(df), f"Consulta: {titulo[:40]}")
+        leer_contador.clear()
+    except Exception as e:
+        pass  # No interrumpir flujo principal
 
 def escribir_github(nombre_archivo, contenido, mensaje_commit):
     try:
@@ -219,6 +243,24 @@ with st.sidebar:
             )
             st.components.v1.html(html_tlog, height=270)
 
+    # ── Indicador de consultas por titulo ──────────────────────────────
+    st.markdown("---")
+    st.markdown("### 🔍 Títulos más consultados")
+    df_cont = leer_contador()
+    if df_cont.empty:
+        st.info("Aún no hay consultas registradas.")
+    else:
+        df_top = df_cont.sort_values("consultas", ascending=False).head(20).reset_index(drop=True)
+        df_top.index = df_top.index + 1
+        df_top.columns = ["Título", "Consultas"]
+        # Barra visual proporcional
+        max_c = int(df_top["Consultas"].max()) if not df_top.empty else 1
+        def barra(n):
+            pct = int(n / max_c * 20)
+            return "█" * pct + "░" * (20 - pct) + f"  {n}"
+        df_top["Frecuencia"] = df_top["Consultas"].apply(barra)
+        st.dataframe(df_top[["Título","Consultas","Frecuencia"]], use_container_width=True, hide_index=False)
+
     if st.button("Recargar base", use_container_width=True):
         get_motor.clear(); st.cache_data.clear(); st.rerun()
 
@@ -238,6 +280,7 @@ if pagina == "Validar titulo":
             else:
                 tu = titulo_input.strip().upper(); uu = univ_input.strip().upper()
                 res = motor.validar(tu, uu if uu else None)
+                registrar_consulta(tu)
                 if res is None or res.requiere_revision:
                     # Buscar titulos relacionados por palabras clave
                     palabras = [p for p in tu.split() if len(p) > 3]
