@@ -462,8 +462,25 @@ elif pagina == "Revision Back":
     if CSV_DECISIONES.exists():
         dfe=pd.read_csv(CSV_DECISIONES)
         if not dfe.empty:
-            ope=["-- Seleccionar --"]+[f"Fila {i}: {r.get('nombre_titulo','')[:35]} — {r.get('universidad','')}" for i,r in dfe.iterrows()]
-            see=st.selectbox("Decision a editar:",ope,key="sel_ed")
+            # ── Multifiltros ──────────────────────────────────────
+            fc1, fc2 = st.columns(2)
+            filtro_titulo = fc1.text_input("🔍 Filtrar por nombre del título", key="filtro_titulo_ed", placeholder="Ej: TECNOLOGO EN SISTEMAS")
+            filtro_estado = fc2.selectbox("📋 Filtrar por estado", ["Todos", "✅ Aprobados", "❌ Rechazados"], key="filtro_estado_ed")
+
+            dfe_f = dfe.copy()
+            if filtro_titulo.strip():
+                dfe_f = dfe_f[dfe_f["nombre_titulo"].astype(str).str.upper().str.contains(filtro_titulo.strip().upper(), na=False)]
+            if filtro_estado == "✅ Aprobados":
+                dfe_f = dfe_f[dfe_f["decision_aplica"].astype(str).str.lower().isin(["true","1","si","yes"])]
+            elif filtro_estado == "❌ Rechazados":
+                dfe_f = dfe_f[~dfe_f["decision_aplica"].astype(str).str.lower().isin(["true","1","si","yes"])]
+
+            st.caption(f"Mostrando {len(dfe_f)} de {len(dfe)} decisiones")
+            if dfe_f.empty:
+                st.info("No hay decisiones que coincidan con los filtros.")
+            else:
+                ope=["-- Seleccionar --"]+[f"Fila {i}: {r.get('nombre_titulo','')[:45]} — {r.get('universidad','')}" for i,r in dfe_f.iterrows()]
+                see=st.selectbox("Decision a editar:",ope,key="sel_ed")
             if see!="-- Seleccionar --":
                 fe=int(see.split(":")[0].replace("Fila","").strip()); re=dfe.iloc[fe]
                 with st.form(f"fe_{fe}"):
