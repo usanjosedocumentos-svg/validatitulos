@@ -106,7 +106,20 @@ def leer_solicitudes():
     return pd.DataFrame(columns=["id","titulo","nombre_titulo","universidad","pais","nombre","asesor","fecha","estado","diploma_path","notas","motivo_rechazo"])
 
 @st.cache_data(ttl=30)
+@st.cache_data(ttl=30)
 def leer_decisiones():
+    try:
+        token = st.secrets.get("GITHUB_TOKEN","")
+        repo  = st.secrets.get("GITHUB_REPO","")
+        if token and repo:
+            url = f"https://raw.githubusercontent.com/{repo}/main/decisiones_back.csv"
+            req = urllib.request.Request(url, headers={"Authorization": f"token {token}"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                raw = r.read().decode("utf-8","replace")
+            df = pd.read_csv(io.StringIO(raw))
+            df.to_csv(CSV_DECISIONES, index=False)
+            return df
+    except: pass
     try: return pd.read_csv(CSV_DECISIONES) if CSV_DECISIONES.exists() else pd.DataFrame()
     except: return pd.DataFrame()
 
