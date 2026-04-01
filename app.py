@@ -433,8 +433,13 @@ elif pagina == "Revision Back":
                         bi=st.checkbox("Incorporar a base",value=True,key=f"bi_{row['id']}")
                         bs=st.form_submit_button("Guardar decision",type="primary",use_container_width=True)
                     if bs and bt.strip():
-                        av=(ba=="Si")
-                        motor.guardar_decision(titulo=bt.strip().upper(),universidad=bu.strip().upper(),pais=bp,aplica=av,nivel=bn,revisor=br.strip(),motivo=bm.strip().replace(",",""),incorporar=bi)
+                        if not br.strip():
+                            st.error("⚠️ El campo Revisor es obligatorio. Ingresa el nombre del revisor del Back Office.")
+                        elif not bm.strip():
+                            st.error("⚠️ La Observacion del Back Office es obligatoria. Ingresa la decision o razon.")
+                        else:
+                            av=(ba=="Si")
+                            motor.guardar_decision(titulo=bt.strip().upper(),universidad=bu.strip().upper(),pais=bp,aplica=av,nivel=bn,revisor=br.strip(),motivo=bm.strip().replace(",",""),incorporar=bi)
                         actualizar_estado_solicitud(row["id"],"APROBADA" if av else "RECHAZADA")
                         if bi: get_motor.clear()
                         st.cache_data.clear(); st.success("Decision guardada."); st.rerun()
