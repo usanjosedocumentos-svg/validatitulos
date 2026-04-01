@@ -222,8 +222,8 @@ with st.sidebar:
     if st.button("Recargar base", use_container_width=True):
         get_motor.clear(); st.cache_data.clear(); st.rerun()
 
+motor = get_motor()
 if pagina == "Validar titulo":
-    motor = get_motor()
     st.title("Validar titulo academico")
     if n_pend: st.info(f"El Back tiene {n_pend} solicitud(es) pendiente(s) para aprobar.")
     tab1, tab2 = st.tabs(["Consultar titulo","Solicitar validacion al Back"])
