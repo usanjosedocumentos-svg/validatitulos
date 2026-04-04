@@ -105,8 +105,7 @@ def leer_solicitudes():
         except: pass
     return pd.DataFrame(columns=["id","titulo","nombre_titulo","universidad","pais","nombre","asesor","fecha","estado","diploma_path","notas","motivo_rechazo"])
 
-@st.cache_data(ttl=30)
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=0)
 def leer_decisiones():
     try:
         token = st.secrets.get("GITHUB_TOKEN","")
@@ -302,7 +301,7 @@ if pagina == "Validar titulo":
                 tu = titulo_input.strip().upper(); uu = univ_input.strip().upper()
                 res = motor.validar(tu, uu if uu else None)
                 registrar_consulta(tu)
-                if res is None or res.requiere_revision:
+                if res is None or res.requiere_revision or res.metodo not in ["back_exacto"]:
                     # Buscar titulos relacionados por palabras clave
                     palabras = [p for p in tu.split() if len(p) > 3]
                     df_dc2 = leer_decisiones()
@@ -482,7 +481,7 @@ elif pagina == "Revision Back":
                 ope=["-- Seleccionar --"]+[f"Fila {i}: {r.get('nombre_titulo','')[:45]} — {r.get('universidad','')}" for i,r in dfe_f.iterrows()]
                 see=st.selectbox("Decision a editar:",ope,key="sel_ed")
             if see!="-- Seleccionar --":
-                fe=int(see.split(":")[0].replace("Fila","").strip()); re=dfe.iloc[fe]
+                titulo_sel=see.split("—")[0].strip().split("|")[0].strip(); mascara=dfe["nombre_titulo"].astype(str).str.strip().str.upper()==titulo_sel.upper(); fe_idx=dfe[mascara].index[0] if mascara.any() else 0; re=dfe.loc[fe_idx]; fe=fe_idx
                 with st.form(f"fe_{fe}"):
                     et=st.text_input("Titulo",value=str(re.get("nombre_titulo","")))
                     eu=st.text_input("Universidad",value=str(re.get("universidad","")))
@@ -492,10 +491,12 @@ elif pagina == "Revision Back":
                     em=st.text_area("Observacion",value=str(re.get("motivo","")),height=80,key="emm")
                     esb=st.form_submit_button("Guardar cambios",use_container_width=True,type="primary")
                 if esb and et.strip():
-                    dfe.at[fe,"nombre_titulo"]=et.strip().upper(); dfe.at[fe,"universidad"]=eu.strip().upper()
-                    dfe.at[fe,"decision_aplica"]=(ea=="Si"); dfe.at[fe,"nivel_confirmado"]=en
-                    dfe.at[fe,"revisor"]=er.strip(); dfe.at[fe,"motivo"]=em.strip().replace(",","")
-                    if escribir_github("decisiones_back.csv",dfe.to_csv(index=False),f"Editar fila {fe}"):
+                    dfe_f=pd.read_csv(CSV_DECISIONES); mf=dfe_f["nombre_titulo"].astype(str).str.strip().str.upper()==titulo_sel.upper()
+                    if mf.any():
+                        ix=dfe_f[mf].index[0]; dfe_f.at[ix,"nombre_titulo"]=et.strip().upper(); dfe_f.at[ix,"universidad"]=eu.strip().upper()
+                        dfe_f.at[ix,"decision_aplica"]=(ea=="Si"); dfe_f.at[ix,"nivel_confirmado"]=en
+                        dfe_f.at[ix,"revisor"]=er.strip(); dfe_f.at[ix,"motivo"]=em.strip().replace(",","")
+                    if escribir_github("decisiones_back.csv",df_a_csv_seguro(dfe_f),f"Editar: {titulo_sel[:40]}"):
                         st.success("Actualizado."); st.cache_data.clear(); st.rerun()
         else: st.info("Sin decisiones para editar.")
     else: st.info("Sin decisiones para editar.")
