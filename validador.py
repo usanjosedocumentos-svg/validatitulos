@@ -186,6 +186,34 @@ class ValidadorCSV:
         else:
             df = pd.DataFrame([nueva_fila])
         df.to_csv(CSV_DECISIONES, index=False)
+        # Subir a GitHub para persistir los datos
+        try:
+            import streamlit as st
+            import urllib.request, json as _json, base64 as _b64, io as _io, csv as _csv_mod
+            token = st.secrets.get("GITHUB_TOKEN", "")
+            repo  = st.secrets.get("GITHUB_REPO", "")
+            if token and repo:
+                # Serializar con QUOTE_ALL para proteger comas en campos
+                buf = _io.StringIO()
+                df.to_csv(buf, index=False, quoting=_csv_mod.QUOTE_ALL)
+                contenido = buf.getvalue()
+                url = f"https://api.github.com/repos/{repo}/contents/decisiones_back.csv"
+                headers_gh = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+                req_g = urllib.request.Request(url, headers=headers_gh)
+                try:
+                    with urllib.request.urlopen(req_g) as resp:
+                        sha = _json.loads(resp.read())["sha"]
+                except urllib.error.HTTPError as e:
+                    sha = None if e.code == 404 else (_ for _ in ()).throw(e)
+                b64 = _b64.b64encode(contenido.encode("utf-8")).decode("utf-8")
+                body = {"message": f"Decision: {titulo[:40]}", "content": b64}
+                if sha:
+                    body["sha"] = sha
+                req_p = urllib.request.Request(url, data=_json.dumps(body).encode(), method="PUT",
+                    headers={**headers_gh, "Content-Type": "application/json"})
+                urllib.request.urlopen(req_p)
+        except Exception:
+            pass  # Si falla GitHub, el CSV local ya está guardado
         if incorporar:
             self.recargar()
 
