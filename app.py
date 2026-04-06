@@ -162,7 +162,10 @@ def actualizar_estado_solicitud(sol_id,nuevo_estado):
     escribir_github("solicitudes_pendientes.csv",df_a_csv_seguro(df),f"Update {sol_id}: {nuevo_estado}")
 
 @st.cache_resource
-def get_motor(): return ValidadorCSV()
+def get_motor():
+    token = st.secrets.get("GITHUB_TOKEN","")
+    repo  = st.secrets.get("GITHUB_REPO","")
+    return ValidadorCSV(token=token, repo=repo)
 
 # ═══════════════════════════════════════════════════════════════
 # CONFIG Y ESTILOS
