@@ -1,5 +1,5 @@
 """
-validador.py — Motor de validación (versión corregida y estable)
+validador.py - Motor de validacion (version corregida y estable)
 """
 
 from __future__ import annotations
@@ -21,9 +21,27 @@ def _norm(texto: str) -> str:
     texto = re.sub(r"[^a-z0-9\s]", " ", texto)
     return re.sub(r"\s+", " ", texto).strip()
 
+KEYWORDS_NIVEL = {
+    "doctorado": ["doctorado", "phd", "ph.d", "doctor en"],
+    "maestria": ["maestria", "master", "magister", "mba", "m.sc"],
+    "especializacion": ["especializacion", "especialista"],
+    "universitario": ["ingenieria", "licenciatura", "medicina", "derecho",
+                      "administracion", "contaduria", "arquitectura",
+                      "psicologia", "economia", "enfermeria", "odontologia",
+                      "comunicacion", "veterinaria"],
+    "tecnologo": ["tecnologo", "tecnologia en", "tecnico superior"],
+    "tecnico": ["tecnico laboral", "tecnico en", "formacion tecnica", "tecnico profesional"],
+    "bachillerato": ["bachiller", "auxiliar"],
+}
+
 SEMESTRE_POR_NIVEL = {
-    "doctorado": 8, "maestria": 7, "especializacion": 6,
-    "universitario": 5, "tecnologo": 3, "tecnico": 2, "bachillerato": 1,
+    "doctorado": 8,
+    "maestria": 7,
+    "especializacion": 6,
+    "universitario": 5,
+    "tecnologo": 3,
+    "tecnico": 2,
+    "bachillerato": 1,
 }
 
 @dataclass
@@ -42,6 +60,7 @@ class Resultado:
         return round(self.confianza * 100)
 
 def github_read(token: str, repo: str, filename: str) -> pd.DataFrame:
+    """Lee SIEMPRE desde GitHub. Si falla, usa fallback local."""
     if token and repo:
         try:
             url = f"https://raw.githubusercontent.com/{repo}/main/{filename}"
@@ -56,6 +75,7 @@ def github_read(token: str, repo: str, filename: str) -> pd.DataFrame:
     return pd.DataFrame()
 
 def github_write(token: str, repo: str, filename: str, df: pd.DataFrame):
+    """Sube SIEMPRE a GitHub sin sobrescribir cambios."""
     if not (token and repo):
         df.to_csv(CSV_DECISIONES, index=False)
         return
@@ -70,8 +90,10 @@ def github_write(token: str, repo: str, filename: str, df: pd.DataFrame):
         sha = json.loads(response.read())["sha"]
     except Exception:
         sha = None
-    body = {"message": f"Actualizacion {filename}",
-            "content": base64.b64encode(content.encode()).decode()}
+    body = {
+        "message": f"Actualizacion {filename}",
+        "content": base64.b64encode(content.encode()).decode(),
+    }
     if sha:
         body["sha"] = sha
     request = urllib.request.Request(
@@ -88,6 +110,7 @@ class ValidadorCSV:
         self.recargar()
 
     def recargar(self):
+        """Carga SIEMPRE desde GitHub como unica fuente de verdad."""
         df = github_read(self.token, self.repo, "decisiones_back.csv")
         if df.empty:
             self._df = pd.DataFrame()
@@ -105,24 +128,34 @@ class ValidadorCSV:
             row = fila.iloc[-1]
             nivel = str(row["nivel_confirmado"])
             return Resultado(
-                aplica=row["aplica"], nivel=nivel,
+                aplica=row["aplica"],
+                nivel=nivel,
                 semestre=SEMESTRE_POR_NIVEL.get(nivel),
-                confianza=0.99, requiere_revision=False,
-                metodo="back_exacto", match=row["nombre_titulo"],
-                razon="Encontrado en decisiones Back")
-        return Resultado(False, None, None, 0.0, True, "no_encontrado",
-                         razon="No existe registro exacto en Back")
+                confianza=0.99,
+                requiere_revision=False,
+                metodo="back_exacto",
+                match=row["nombre_titulo"],
+                razon="Encontrado en decisiones Back"
+            )
+        return Resultado(
+            aplica=False, nivel=None, semestre=None, confianza=0.0,
+            requiere_revision=True, metodo="no_encontrado",
+            razon="No existe registro exacto en Back"
+        )
 
     def guardar_decision(self, titulo, universidad, pais, aplica,
                          nivel, revisor="", motivo="", incorporar=True):
         df = github_read(self.token, self.repo, "decisiones_back.csv")
         nueva_fila = {
-            "fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
-            "nombre_titulo": str(titulo).strip().upper(),
-            "universidad": str(universidad).strip().upper() if universidad else "",
-            "pais": pais, "decision_aplica": str(aplica).lower(),
-            "nivel_confirmado": nivel, "semestre": SEMESTRE_POR_NIVEL.get(nivel, ""),
-            "revisor": str(revisor).strip(), "motivo": str(motivo).strip(),
+            "fecha":            datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
+            "nombre_titulo":    str(titulo).strip().upper(),
+            "universidad":      str(universidad).strip().upper() if universidad else "",
+            "pais":             pais,
+            "decision_aplica":  str(aplica).lower(),
+            "nivel_confirmado": nivel,
+            "semestre":         SEMESTRE_POR_NIVEL.get(nivel, ""),
+            "revisor":          str(revisor).strip(),
+            "motivo":           str(motivo).strip(),
         }
         if not df.empty and "nombre_titulo" in df.columns:
             df = df[df["nombre_titulo"].astype(str).str.strip().str.upper()
@@ -137,8 +170,9 @@ class ValidadorCSV:
         if df.empty:
             return False
         nombre_up = str(nombre_titulo).strip().upper()
-        df_nuevo = df[df["nombre_titulo"].astype(str).str.strip().str.upper()
-                      != nombre_up].reset_index(drop=True)
+        df_nuevo = df[
+            df["nombre_titulo"].astype(str).str.strip().str.upper() != nombre_up
+        ].reset_index(drop=True)
         if len(df_nuevo) == len(df):
             return False
         df_nuevo.to_csv(CSV_DECISIONES, index=False)
