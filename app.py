@@ -424,8 +424,12 @@ elif pagina=="Revision Back":
                                     dfe_fr.at[ix,"nombre_titulo"]=et.strip().upper(); dfe_fr.at[ix,"universidad"]=eu.strip().upper()
                                     dfe_fr.at[ix,"decision_aplica"]=(ea=="Si"); dfe_fr.at[ix,"nivel_confirmado"]=en
                                     dfe_fr.at[ix,"revisor"]=er.strip(); dfe_fr.at[ix,"motivo"]=em.strip().replace(",","")
-                                    if escribir_github("decisiones_back.csv",df_a_csv_seguro(dfe_fr),f"Editar: {titulo_sel[:40]}"):
-                                        st.success("Actualizado."); st.cache_data.clear(); st.rerun()
+                                    csv_nuevo=df_a_csv_seguro(dfe_fr)
+                                    dfe_fr.to_csv(CSV_DECISIONES,index=False)
+                                    ok=escribir_github("decisiones_back.csv",csv_nuevo,f"Editar: {titulo_sel[:40]}")
+                                    if ok: st.success(f"✅ Actualizado: {titulo_sel[:40]}"); leer_decisiones.clear(); st.cache_data.clear(); st.rerun()
+                                    else: st.error("Error al guardar en GitHub. Intenta de nuevo.")
+                                else: st.warning("No se encontró el registro. Recarga la base.")
     else: st.info("Sin decisiones para editar.")
 
 # ═══════════════════════════════════════════════════════════════
