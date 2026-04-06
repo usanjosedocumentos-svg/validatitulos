@@ -13,6 +13,7 @@ import pandas as pd
 import urllib.request, io, json, base64, time
 
 CSV_DECISIONES = Path(__file__).parent / "decisiones_back.csv"
+CSV_TITULOS    = Path(__file__).parent / "titulos.csv"
 
 def _norm(texto: str) -> str:
     texto = texto.lower().strip()
