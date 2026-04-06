@@ -254,7 +254,7 @@ if pagina=="Validar titulo":
             else:
                 tu=titulo_input.strip().upper(); uu=univ_input.strip().upper()
                 leer_decisiones.clear()
-                res=motor.validar(tu,uu if uu else None)
+                res=motor.validar(tu)
                 registrar_consulta(tu)
                 if res is None or res.requiere_revision or res.metodo not in ["back_exacto"]:
                     palabras=[p for p in tu.split() if len(p)>3]
