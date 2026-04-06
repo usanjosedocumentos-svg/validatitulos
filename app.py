@@ -230,8 +230,7 @@ with st.sidebar:
             st.markdown("### 📊 Resumen")
             m1,m2,m3=st.columns(3)
             m1.metric("Total",tot); m2.metric("✅",apl); m3.metric("❌",no_)
-    if st.button("🔄 Recargar base",use_container_width=True):
-        st.cache_data.clear(); st.rerun()
+    if st.button("🔄 Recargar base",use_container_width=True):; st.cache_data.clear(); st.rerun()
 
 motor=get_motor()
 
@@ -451,8 +450,7 @@ elif pagina=="Cargar datos":
                 dfn["nombre_titulo"]=dfn["nombre_titulo"].astype(str).str.upper().str.strip(); dfn=dfn.drop_duplicates(subset=["nombre_titulo"])
                 dt=pd.concat([pd.read_csv(CSV_TITULOS),dfn],ignore_index=True).drop_duplicates(subset=["nombre_titulo"]) if CSV_TITULOS.exists() else dfn
                 dt.to_csv(CSV_TITULOS,index=False)
-                if escribir_github("titulos.csv",dt.to_csv(index=False),f"Carga: {len(dfn)} titulos"):
-                    st.cache_data.clear(); st.success(f"{len(dfn)} titulos cargados.")
+                if escribir_github("titulos.csv",dt.to_csv(index=False),f"Carga: {len(dfn)} titulos"):; st.cache_data.clear(); st.success(f"{len(dfn)} titulos cargados.")
         except Exception as e: st.error(f"Error: {e}")
 
 # ═══════════════════════════════════════════════════════════════
