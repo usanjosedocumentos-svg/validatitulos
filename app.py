@@ -1,4 +1,4 @@
-""" app.py - ValidaTitulos - Sistema de roles v2 """
+""" app.py - ValidaTitulos - Sistema de roles v2 | Deploy: 2026-04-06T13:14 """
 import streamlit as st
 import io, csv as _csv, unicodedata, re
 import pandas as pd
