@@ -11,7 +11,7 @@ from validador import ValidadorCSV, CSV_TITULOS, CSV_DECISIONES
 # ROLES Y PERMISOS
 # ═══════════════════════════════════════════════════════════════
 ROLES_DEFAULT = {
-    "validador": [
+    "validador": [h
         "deyci.londono@bluhartmann.com","diego.guevara@bluhartmann.com",
         "maria.blanco@bluhartmann.com","andres.baracaldo@bluhartmann.com",
         "jakelin.camacho@bluhartmann.com","gina.cardenas@bluhartmann.com",
