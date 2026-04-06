@@ -161,8 +161,8 @@ def actualizar_estado_solicitud(sol_id,nuevo_estado):
     df.to_csv(CSV_SOLICITUDES,index=False)
     escribir_github("solicitudes_pendientes.csv",df_a_csv_seguro(df),f"Update {sol_id}: {nuevo_estado}")
 
-@st.cache_resource
 def get_motor():
+    """Siempre crea motor fresco - NO usar cache para garantizar datos actualizados."""
     token = st.secrets.get("GITHUB_TOKEN","")
     repo  = st.secrets.get("GITHUB_REPO","")
     return ValidadorCSV(token=token, repo=repo)
@@ -231,7 +231,7 @@ with st.sidebar:
             m1,m2,m3=st.columns(3)
             m1.metric("Total",tot); m2.metric("✅",apl); m3.metric("❌",no_)
     if st.button("🔄 Recargar base",use_container_width=True):
-        get_motor.clear(); st.cache_data.clear(); st.rerun()
+        ; st.cache_data.clear(); st.rerun()
 
 motor=get_motor()
 
@@ -372,8 +372,7 @@ elif pagina=="Revision Back":
                                     pais=bp,aplica=(ba=="Si"),nivel=bn,revisor=br.strip(),
                                     motivo=bm.strip().replace(",",""),incorporar=bi)
                                 actualizar_estado_solicitud(row["id"],"APROBADA" if ba=="Si" else "RECHAZADA")
-                                if bi: get_motor.clear()
-                                st.cache_data.clear(); st.success("Decision guardada."); st.rerun()
+                                if bi: st.cache_data.clear(); st.success("Decision guardada."); st.rerun()
     st.divider(); st.markdown("### Historial decisiones Back")
     leer_decisiones.clear(); dfd=leer_decisiones()
     if not dfd.empty:
@@ -452,7 +451,7 @@ elif pagina=="Cargar datos":
                 dt=pd.concat([pd.read_csv(CSV_TITULOS),dfn],ignore_index=True).drop_duplicates(subset=["nombre_titulo"]) if CSV_TITULOS.exists() else dfn
                 dt.to_csv(CSV_TITULOS,index=False)
                 if escribir_github("titulos.csv",dt.to_csv(index=False),f"Carga: {len(dfn)} titulos"):
-                    get_motor.clear(); st.cache_data.clear(); st.success(f"{len(dfn)} titulos cargados.")
+                    ; st.cache_data.clear(); st.success(f"{len(dfn)} titulos cargados.")
         except Exception as e: st.error(f"Error: {e}")
 
 # ═══════════════════════════════════════════════════════════════
