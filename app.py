@@ -299,6 +299,7 @@ if pagina == "Validar titulo":
                 st.warning("Ingresa al menos el nombre del titulo.")
             else:
                 tu = titulo_input.strip().upper(); uu = univ_input.strip().upper()
+                leer_decisiones.clear()
                 res = motor.validar(tu, uu if uu else None)
                 registrar_consulta(tu)
                 if res is None or res.requiere_revision or res.metodo not in ["back_exacto"]:
