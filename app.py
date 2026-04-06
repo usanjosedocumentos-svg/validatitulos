@@ -482,8 +482,9 @@ elif pagina == "Revision Back":
                 ope=["-- Seleccionar --"]+[f"Fila {i}: {r.get('nombre_titulo','')[:45]} — {r.get('universidad','')}" for i,r in dfe_f.iterrows()]
                 see=st.selectbox("Decision a editar:",ope,key="sel_ed")
             if see!="-- Seleccionar --":
-                titulo_sel=see.split("—")[0].strip().split("|")[0].strip(); mascara=dfe["nombre_titulo"].astype(str).str.strip().str.upper()==titulo_sel.upper(); fe_idx=dfe[mascara].index[0] if mascara.any() else 0; re=dfe.loc[fe_idx]; fe=fe_idx
-                with st.form(f"fe_{fe}"):
+                titulo_sel=see.split("—")[0].strip().split("|")[0].strip() if see!="-- Seleccionar --" else ""; mascara=dfe["nombre_titulo"].astype(str).str.strip().str.upper()==titulo_sel.upper() if titulo_sel else pd.Series([False]*len(dfe)); fe_idx=int(dfe[mascara].index[0]) if mascara.any() else None; re=dfe.loc[fe_idx] if fe_idx is not None else None; fe=fe_idx
+                if re is not None:
+                    with st.form(f"fe_{str(titulo_sel)[:15]}_{fe_idx}"):
                     et=st.text_input("Titulo",value=str(re.get("nombre_titulo","")))
                     eu=st.text_input("Universidad",value=str(re.get("universidad","")))
                     ea=st.radio("Aplica?",["Si","No"],horizontal=True,index=0 if str(re.get("decision_aplica","")).lower() in ["true","1","si"] else 1,key="eaa")
