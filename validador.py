@@ -105,12 +105,17 @@ class ValidadorCSV:
         if not fila.empty:
             row = fila.iloc[-1]
             nivel = str(row["nivel_confirmado"])
+            motivo_back = str(row.get("motivo", "")).strip()
+            revisor_back = str(row.get("revisor", "")).strip()
+            razon_final = motivo_back if motivo_back and motivo_back.lower() not in ["nan","none",""] else "Encontrado en decisiones Back"
+            if revisor_back and revisor_back.lower() not in ["nan","none",""]:
+                razon_final = f"{razon_final} | Revisor: {revisor_back}"
             return Resultado(
                 aplica=row["aplica"], nivel=nivel,
                 semestre=SEMESTRE_POR_NIVEL.get(nivel),
                 confianza=0.99, requiere_revision=False,
                 metodo="back_exacto", match=row["nombre_titulo"],
-                razon="Encontrado en decisiones Back")
+                razon=razon_final)
         return Resultado(False, None, None, 0.0, True, "no_encontrado",
                          razon="No existe registro exacto en Back")
 
