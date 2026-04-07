@@ -475,3 +475,4 @@ elif pagina=="Administrar Roles":
                 st.rerun()
                 guardar_roles_csv(roles_actuales); st.success(f"Acceso revocado: {er2}"); st.rerun()
         st.info("Los administradores principales no pueden ser revocados.")
+
