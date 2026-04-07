@@ -234,18 +234,25 @@ if pagina=="Validar titulo":
             else:
                 tu = titulo_input.strip().upper()
                 motor.recargar()
-                res = motor.validar(tu)
                 registrar_consulta(tu)
-                if res.requiere_revision:
-                    st.warning("No encontrado. Solicita validacion al Back.")
-                elif res.aplica:
-                    st.success(f"APLICA - Nivel: {res.nivel or ''}")
-                    if res.razon:
-                        st.info(f"Observacion: {res.razon}")
+                similares = motor.buscar_todos_similares(tu, umbral=0.55, max_resultados=15)
+                if not similares:
+                    st.warning("No se encontraron titulos similares. Solicita validacion al Back.")
                 else:
-                    st.error(f"NO APLICA - Nivel: {res.nivel or ''}")
-                    if res.razon:
-                        st.info(f"Observacion: {res.razon}")
+                    st.markdown(f"**Se encontraron {len(similares)} titulo(s) similar(es):**")
+                    for s in similares:
+                        icono = "✅" if s["aplica"] else "❌"
+                        estado = "APLICA" if s["aplica"] else "NO APLICA"
+                        nivel = s["nivel"] or ""
+                        motivo = s["motivo"] if s["motivo"] and s["motivo"].lower() not in ["nan","none",""] else ""
+                        with st.expander(f"{icono} {s['nombre_titulo']} — {estado} ({s['score']}% similitud)"):
+                            col1, col2 = st.columns(2)
+                            col1.metric("Resultado", estado)
+                            col2.metric("Nivel", nivel or "—")
+                            if motivo:
+                                st.info(f"Observacion del Back: {motivo}")
+                            if s["revisor"] and s["revisor"].lower() not in ["nan","none",""]:
+                                st.caption(f"Revisor: {s['revisor']}")
     with tab2:
         st.markdown("### Solicitar validacion al Back")
         with st.form("form_sol"):

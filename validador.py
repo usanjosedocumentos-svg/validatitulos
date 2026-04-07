@@ -104,6 +104,28 @@ class ValidadorCSV:
                 mejor = row; mejor_score = score
         return (mejor, mejor_score) if mejor_score >= umbral else (None, mejor_score)
 
+    def buscar_todos_similares(self, titulo_usuario, umbral=0.55, max_resultados=15):
+        """Retorna LISTA de todos los titulos similares ordenados por score."""
+        titulo_norm = normalizar(titulo_usuario)
+        resultados = []
+        for _, row in self._df.iterrows():
+            titulo_bd = str(row.get("nombre_titulo", ""))
+            score = similitud(titulo_norm, normalizar(titulo_bd))
+            if score >= umbral:
+                motivo = str(row.get("motivo", "")).strip()
+                revisor = str(row.get("revisor", "")).strip()
+                resultados.append({
+                    "nombre_titulo": titulo_bd,
+                    "score": round(score * 100),
+                    "aplica": bool(row.get("aplica", False)),
+                    "nivel": str(row.get("nivel_confirmado", "")).strip(),
+                    "motivo": motivo if motivo.lower() not in ["nan","none",""] else "",
+                    "revisor": revisor if revisor.lower() not in ["nan","none",""] else "",
+                })
+        resultados.sort(key=lambda x: x["score"], reverse=True)
+        return resultados[:max_resultados]
+
+
     def validar(self, titulo: str) -> Resultado:
         tn = normalizar(titulo)
         if self._df.empty:
