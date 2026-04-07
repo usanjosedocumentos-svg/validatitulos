@@ -433,14 +433,5 @@ elif pagina=="Administrar Roles":
                 guardar_roles_csv(roles_actuales)
                 st.success(f"{ec} ahora es {nrc}")
                 st.rerun()
-with t4:
-        ADMINS_PROT=["lady.quinones@bluhartmann.com","jessica.romero@bluhartmann.com"]
-        todos2=[e for lst in roles_actuales.values() for e in lst if e not in ADMINS_PROT]
-        er2=st.selectbox("Usuario a revocar",["-- Seleccionar --"]+sorted(todos2))
-        if er2!="-- Seleccionar --":
-            st.warning(f"Se revocara acceso de: {er2}")
-            if st.button("Confirmar revocacion",type="primary"):
-                for r in roles_actuales:
-                    if er2 in roles_actuales[r]: roles_actuales[r].remove(er2)
                 guardar_roles_csv(roles_actuales); st.success(f"Acceso revocado: {er2}"); st.rerun()
         st.info("Los administradores principales no pueden ser revocados.")
