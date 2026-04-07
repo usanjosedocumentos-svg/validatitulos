@@ -419,7 +419,7 @@ elif pagina=="Administrar Roles":
                 else:
                     roles_actuales[nr].append(em_n); guardar_roles_csv(roles_actuales)
                     st.success(f"{em_n} agregado como {nr}"); st.rerun()
-   with t3:
+    with t3:
     # LISTA DE TODOS LOS USUARIOS EN ROLES
     todos = [e for lst in roles_actuales.values() for e in lst]
 
