@@ -420,28 +420,19 @@ elif pagina=="Administrar Roles":
                     roles_actuales[nr].append(em_n); guardar_roles_csv(roles_actuales)
                     st.success(f"{em_n} agregado como {nr}"); st.rerun()
     with t3:
-    # LISTA DE TODOS LOS USUARIOS EN ROLES
-    todos = [e for lst in roles_actuales.values() for e in lst]
-
-    ec = st.selectbox("Usuario", ["-- Seleccionar --"] + sorted(todos), key="ec")
-
-    if ec != "-- Seleccionar --":
-        st.info(f"Rol actual: **{obtener_rol(ec, roles_actuales)}**")
-        
-        nrc = st.selectbox("Nuevo rol", ["validador", "back", "admin"], key="nrc")
-
-        if st.button("Cambiar rol", type="primary", key="btn_ch"):
-            # Elimina al usuario de cualquier rol que tenga
-            for r in roles_actuales:
-                if ec in roles_actuales[r]:
-                    roles_actuales[r].remove(ec)
-
-            # Asignar el nuevo rol
-            roles_actuales[nrc].append(ec)
-
-            guardar_roles_csv(roles_actuales)
-            st.success(f"✅ {ec} → {nrc}")
-            st.rerun()
+        todos = [e for lst in roles_actuales.values() for e in lst]
+        ec = st.selectbox("Usuario", ["-- Seleccionar --"] + sorted(todos), key="ec")
+        if ec != "-- Seleccionar --":
+            st.info(f"Rol actual: {obtener_rol(ec, roles_actuales)}")
+            nrc = st.selectbox("Nuevo rol", ["validador", "back", "admin"], key="nrc")
+            if st.button("Cambiar rol", type="primary", key="btn_ch"):
+                for r in roles_actuales:
+                    if ec in roles_actuales[r]:
+                        roles_actuales[r].remove(ec)
+                roles_actuales[nrc].append(ec)
+                guardar_roles_csv(roles_actuales)
+                st.success(f"{ec} ahora es {nrc}")
+                st.rerun()
 with t4:
         ADMINS_PROT=["lady.quinones@bluhartmann.com","jessica.romero@bluhartmann.com"]
         todos2=[e for lst in roles_actuales.values() for e in lst if e not in ADMINS_PROT]
