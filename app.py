@@ -29,9 +29,9 @@ ROLES_DEFAULT = {
     "admin": ["lady.quinones@bluhartmann.com","jessica.romero@bluhartmann.com"]
 }
 PERMISOS = {
-    "validador": ["Validar titulo","Ingresar diploma"],
-    "back":      ["Validar titulo","Ingresar diploma","Revision Back","Historial"],
-    "admin":     ["Validar titulo","Ingresar diploma","Revision Back","Cargar datos","Historial","Dashboard","Administrar Roles"]
+    "validador": ["Validar titulo", "Ingresar diploma", "Historial"],
+    "back":      ["Validar titulo", "Ingresar diploma", "Revision Back", "Historial"],
+    "admin":     ["Validar titulo", "Ingresar diploma", "Revision Back", "Cargar datos", "Historial", "Dashboard", "Administrar Roles"]
 }
 ROL_LABELS = {"validador":"VALIDADOR","back":"BACK OFFICE","admin":"ADMINISTRADOR"}
 ROL_CSS    = {"validador":"#1d4ed8","back":"#7c3aed","admin":"#dc2626"}
