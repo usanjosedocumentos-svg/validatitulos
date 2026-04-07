@@ -347,11 +347,44 @@ elif pagina=="Revision Back":
                                 st.rerun()
     st.divider()
     st.markdown("### Historial decisiones Back")
-    dfd=pd.read_csv(CSV_DECISIONES) if CSV_DECISIONES.exists() else pd.DataFrame()
-    if not dfd.empty:
-        st.dataframe(dfd,use_container_width=True,hide_index=True)
-    else:
+    dfd = pd.read_csv(CSV_DECISIONES) if CSV_DECISIONES.exists() else pd.DataFrame()
+    if dfd.empty:
         st.info("Sin decisiones registradas.")
+    else:
+        bus_hist = st.text_input("Buscar en historial", placeholder="Ej: Tecnologo", key="bus_hist")
+        dfd_vis = dfd[dfd.apply(lambda r: bus_hist.upper() in str(r).upper(), axis=1)] if bus_hist.strip() else dfd
+        st.caption(f"Total: {len(dfd_vis)} decision(es)")
+        st.dataframe(dfd_vis, use_container_width=True, hide_index=True)
+        st.divider()
+        st.markdown("#### Editar o eliminar una decision")
+        titulos_back = dfd["nombre_titulo"].dropna().unique().tolist()
+        titulo_sel = st.selectbox("Selecciona el titulo", ["-- Seleccionar --"] + sorted(titulos_back), key="sel_titulo_back")
+        if titulo_sel != "-- Seleccionar --":
+            fila = dfd[dfd["nombre_titulo"] == titulo_sel].iloc[-1]
+            col_ed, col_el = st.columns(2)
+            with col_ed:
+                with st.expander("Editar decision", expanded=False):
+                    with st.form("form_editar_back"):
+                        ed_aplica = st.radio("Aplica?", ["Si", "No"], index=0 if str(fila.get("decision_aplica","")).lower() in ["true","1","si"] else 1, horizontal=True, key="ed_ap")
+                        ed_nivel  = st.selectbox("Nivel", NIVELES, index=NIVELES.index(fila.get("nivel_confirmado","tecnico")) if fila.get("nivel_confirmado","tecnico") in NIVELES else 0, key="ed_nv")
+                        ed_motivo = st.text_area("Observacion", value=str(fila.get("motivo","")) if str(fila.get("motivo","")).lower() not in ["nan","none"] else "", key="ed_mo")
+                        ed_rev    = st.text_input("Revisor", value=str(fila.get("revisor","")) if str(fila.get("revisor","")).lower() not in ["nan","none"] else "", key="ed_rv")
+                        if st.form_submit_button("Guardar cambios", type="primary", use_container_width=True):
+                            motor.editar_decision(titulo_sel, {
+                                "decision_aplica": str(ed_aplica == "Si").lower(),
+                                "nivel_confirmado": ed_nivel,
+                                "motivo": ed_motivo.strip(),
+                                "revisor": ed_rev.strip()
+                            })
+                            st.success("Decision actualizada.")
+                            st.rerun()
+            with col_el:
+                st.markdown("**Eliminar decision**")
+                st.warning(f"Se eliminara: {titulo_sel}")
+                if st.button("Eliminar definitivamente", type="primary", use_container_width=True, key="btn_eliminar"):
+                    motor.eliminar_decision(titulo_sel)
+                    st.success("Decision eliminada.")
+                    st.rerun()
 
 elif pagina=="Cargar datos":
     st.title("Cargar datos")
